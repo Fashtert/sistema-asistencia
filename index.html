@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sistema de Asistencia</title>
+</head>
+<body>
+
+<h2>Subir archivo biométrico</h2>
+
+<input type="file" id="archivo">
+<button onclick="enviar()">Subir</button>
+
+<p id="estado"></p>
+
+<hr>
+
+<div id="contenedorTabla" style="display:none;">
+  <h2>Resultados</h2>
+
+  <table border="1">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Fecha</th>
+        <th>Entrada</th>
+        <th>Salida</th>
+      </tr>
+    </thead>
+    <tbody id="tabla"></tbody>
+  </table>
+</div>
+
+<script>
+async function enviar() {
+  const archivo = document.getElementById("archivo").files[0];
+  const estado = document.getElementById("estado");
+
+  if (!archivo) {
+    alert("Selecciona un archivo");
+    return;
+  }
+
+  estado.innerText = "Enviando archivo...";
+
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+
+  try {
+    const res = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    if (!res.ok) {
+      throw new Error("Error en servidor");
+    }
+
+    const data = await res.json();
+
+    console.log("DATA:", data);
+
+    if (!data || data.length === 0) {
+      estado.innerText = "No hay datos para mostrar";
+      return;
+    }
+
+    const tabla = document.getElementById("tabla");
+    const contenedor = document.getElementById("contenedorTabla");
+
+    tabla.innerHTML = "";
+
+    data.forEach(item => {
+      const fila = document.createElement("tr");
+
+      fila.innerHTML = `
+        <td>${item.id_empleado}</td>
+        <td>${item.fecha}</td>
+        <td>${item.entrada}</td>
+        <td>${item.salida}</td>
+      `;
+
+      tabla.appendChild(fila);
+    });
+
+    contenedor.style.display = "block";
+    estado.innerText = "Datos cargados correctamente";
+
+  } catch (error) {
+    console.error(error);
+    estado.innerText = "Error al procesar archivo";
+  }
+}
+</script>
+
+</body>
+</html>
