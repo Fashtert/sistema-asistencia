@@ -1,36 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
+  <meta charset="UTF-8">
   <title>Sistema de Asistencia</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      width: 90%;
+      max-width: 900px;
+      margin: 40px auto;
+      text-align: center;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    input[type="file"] {
+      margin: 15px 0;
+    }
+
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #estado {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th {
+      background: #007bff;
+      color: white;
+      padding: 10px;
+    }
+
+    td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    tr:hover {
+      background: #f1f1f1;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Subir archivo biométrico</h2>
+<div class="container">
 
-<input type="file" id="archivo">
-<button onclick="enviar()">Subir</button>
+  <h1>📊 Sistema de Control de Asistencia</h1>
 
-<p id="estado"></p>
+  <div class="card">
+    <h3>Subir archivo biométrico</h3>
 
-<hr>
+    <input type="file" id="archivo">
+    <br>
+    <button onclick="enviar()">Procesar Asistencia</button>
+    <button onclick="exportarExcel()">Exportar Excel</button>
 
-<div id="contenedorTabla" style="display:none;">
-  <h2>Resultados</h2>
+    <p id="estado"></p>
+  </div>
 
-  <table border="1">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Fecha</th>
-        <th>Entrada</th>
-        <th>Salida</th>
-      </tr>
-    </thead>
-    <tbody id="tabla"></tbody>
-  </table>
+  <div id="contenedorTabla" class="card hidden">
+    <h2>Resultados de Asistencia</h2>
+
+    <table>
+      <thead>
+        <tr>
+          <th>DNI</th>
+          <th>Fecha</th>
+          <th>Entrada</th>
+          <th>Salida</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tabla"></tbody>
+    </table>
+
+    <h3>Resumen por empleado</h3>
+    <div id="resumen"></div>
+  </div>
+
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
 <script>
+let datosExcel = [];
+
 async function enviar() {
   const archivo = document.getElementById("archivo").files[0];
   const estado = document.getElementById("estado");
@@ -40,7 +137,7 @@ async function enviar() {
     return;
   }
 
-  estado.innerText = "Enviando archivo...";
+  estado.innerText = "Procesando...";
 
   const formData = new FormData();
   formData.append("archivo", archivo);
@@ -57,19 +154,14 @@ async function enviar() {
 
     const data = await res.json();
 
-    console.log("DATA:", data);
-
-    if (!data || data.length === 0) {
-      estado.innerText = "No hay datos para mostrar";
-      return;
-    }
-
     const tabla = document.getElementById("tabla");
     const contenedor = document.getElementById("contenedorTabla");
 
     tabla.innerHTML = "";
 
-    data.forEach(item => {
+    datosExcel = data.detalle;
+
+    data.detalle.forEach(item => {
       const fila = document.createElement("tr");
 
       fila.innerHTML = `
@@ -77,18 +169,49 @@ async function enviar() {
         <td>${item.fecha}</td>
         <td>${item.entrada}</td>
         <td>${item.salida}</td>
+        <td>${item.estado}</td>
       `;
 
       tabla.appendChild(fila);
     });
 
-    contenedor.style.display = "block";
+    // RESUMEN
+    const resumenDiv = document.getElementById("resumen");
+    resumenDiv.innerHTML = "";
+
+    data.resumen.forEach(r => {
+      resumenDiv.innerHTML += `
+        <p>
+          DNI ${r.id_empleado} → Días: ${r.dias} |
+          Pago: S/ ${r.total_pago} |
+          Descuento: S/ ${r.total_descuento} |
+          Total: S/ ${r.total_final}
+        </p>
+      `;
+    });
+
+    contenedor.classList.remove("hidden");
     estado.innerText = "Datos cargados correctamente";
 
   } catch (error) {
     console.error(error);
     estado.innerText = "Error al procesar archivo";
   }
+}
+
+// EXPORTAR EXCEL
+function exportarExcel() {
+  if (datosExcel.length === 0) {
+    alert("No hay datos");
+    return;
+  }
+
+  const ws = XLSX.utils.json_to_sheet(datosExcel);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Asistencia");
+
+  XLSX.writeFile(wb, "asistencia.xlsx");
 }
 </script>
 
