@@ -1,3 +1,21 @@
+const mysql = require("mysql2");
+
+const db = mysql.createConnection({
+  host: "localhost",
+  user: "root",
+  password: "123456",
+  database: "asistencia_db",
+  port: 3307
+});
+
+db.connect(err => {
+  if (err) {
+    console.error("Error conexión:", err);
+  } else {
+    console.log("Conectado a MySQL");
+  }
+});
+
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
@@ -94,9 +112,25 @@ app.post("/upload", upload.single("archivo"), (req, res) => {
       descuento,
       pago: PAGO
     });
+
+    db.query(
+      "INSERT INTO asistencia (id_empleado, fecha, entrada, salida, estado, descuento) VALUES (?, ?, ?, ?, ?, ?)",
+      [
+        item.id_empleado,
+        item.fecha,
+        entrada,
+        salida,
+        estado,
+        descuento
+      ],
+      (err) => {
+        if (err) {
+          console.error("Error insert:", err);
+        }
+      }
+    );
   }
 
-  // 🔥 RESUMEN
   let resumen = {};
 
   resultado.forEach(r => {
@@ -118,11 +152,21 @@ app.post("/upload", upload.single("archivo"), (req, res) => {
       resumen[r.id_empleado].total_descuento;
   });
 
-  console.log("Asistencia procesada:", resultado);
-
   res.json({
     detalle: resultado,
     resumen: Object.values(resumen)
+  });
+});
+
+// 🔥 HISTORIAL DESDE DB
+app.get("/historial", (req, res) => {
+  db.query("SELECT * FROM asistencia ORDER BY fecha DESC", (err, results) => {
+    if (err) {
+      console.error("Error consulta:", err);
+      return res.status(500).json({ error: "Error al obtener datos" });
+    }
+
+    res.json(results);
   });
 });
 

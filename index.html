@@ -97,6 +97,7 @@
     <br>
     <button onclick="enviar()">Procesar Asistencia</button>
     <button onclick="exportarExcel()">Exportar Excel</button>
+    <button onclick="verHistorial()">Ver Historial</button>
 
     <p id="estado"></p>
   </div>
@@ -148,10 +149,6 @@ async function enviar() {
       body: formData
     });
 
-    if (!res.ok) {
-      throw new Error("Error en servidor");
-    }
-
     const data = await res.json();
 
     const tabla = document.getElementById("tabla");
@@ -175,7 +172,6 @@ async function enviar() {
       tabla.appendChild(fila);
     });
 
-    // RESUMEN
     const resumenDiv = document.getElementById("resumen");
     resumenDiv.innerHTML = "";
 
@@ -199,7 +195,43 @@ async function enviar() {
   }
 }
 
-// EXPORTAR EXCEL
+async function verHistorial() {
+  const estado = document.getElementById("estado");
+
+  estado.innerText = "Cargando historial...";
+
+  try {
+    const res = await fetch("/historial");
+    const data = await res.json();
+
+    const tabla = document.getElementById("tabla");
+    const contenedor = document.getElementById("contenedorTabla");
+
+    tabla.innerHTML = "";
+
+    data.forEach(item => {
+      const fila = document.createElement("tr");
+
+      fila.innerHTML = `
+        <td>${item.id_empleado}</td>
+        <td>${item.fecha}</td>
+        <td>${item.entrada}</td>
+        <td>${item.salida}</td>
+        <td>${item.estado}</td>
+      `;
+
+      tabla.appendChild(fila);
+    });
+
+    contenedor.classList.remove("hidden");
+    estado.innerText = "Historial cargado";
+
+  } catch (error) {
+    console.error(error);
+    estado.innerText = "Error al cargar historial";
+  }
+}
+
 function exportarExcel() {
   if (datosExcel.length === 0) {
     alert("No hay datos");
