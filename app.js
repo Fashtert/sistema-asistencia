@@ -1,4 +1,11 @@
+const express = require("express");
 const mysql = require("mysql2");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const session = require("express-session");
+
+const app = express();
 
 const db = mysql.createConnection({
   host: "localhost",
@@ -9,47 +16,82 @@ const db = mysql.createConnection({
 });
 
 db.connect(err => {
-  if (err) {
-    console.error("Error conexión:", err);
-  } else {
-    console.log("Conectado a MySQL");
-  }
+  if (err) console.log(err);
+  else console.log("MySQL conectado");
 });
 
-const express = require("express");
-const multer = require("multer");
-const fs = require("fs");
-const path = require("path");
+app.use(express.json());
 
-const app = express();
+app.use(session({
+  secret: "clave",
+  resave: false,
+  saveUninitialized: true
+}));
 
-app.use(express.static(__dirname));
+function auth(req, res, next) {
+  if (!req.session.user) {
+    return res.redirect("/login.html");
+  }
+  next();
+}
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+
+  db.query(
+    "SELECT * FROM usuarios WHERE username=? AND password=?",
+    [username, password],
+    (err, result) => {
+      if (result.length === 0) {
+        return res.json({ success: false });
+      }
+
+      req.session.user = result[0];
+
+      res.json({
+        success: true,
+        rol: result[0].rol
+      });
+    }
+  );
+});
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "login.html"));
+});
+
+app.get("/login.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "login.html"));
+});
+
+app.get("/index.html", auth, (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/dashboard.html", auth, (req, res) => {
+  if (req.session.user.rol !== "admin") {
+    return res.redirect("/index.html");
+  }
+  res.sendFile(path.join(__dirname, "dashboard.html"));
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/login.html");
+});
 
 const storage = multer.diskStorage({
   destination: "uploads/",
-  filename: (req, file, cb) => {
-    cb(null, file.originalname);
-  }
+  filename: (req, file, cb) => cb(null, file.originalname)
 });
 
 const upload = multer({ storage });
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
-});
-
-app.post("/upload", upload.single("archivo"), (req, res) => {
-  console.log("Archivo recibido:", req.file);
-
-  if (!req.file) {
-    return res.status(400).json({ error: "No se recibió archivo" });
-  }
-
-  const ruta = req.file.path;
-  const data = fs.readFileSync(ruta, "utf-8");
+app.post("/upload", auth, upload.single("archivo"), (req, res) => {
+  const data = fs.readFileSync(req.file.path, "utf-8");
   const lineas = data.split("\n");
 
-  let registros = [];
+  let asistencia = {};
 
   lineas.forEach(linea => {
     if (!linea.trim()) return;
@@ -57,35 +99,25 @@ app.post("/upload", upload.single("archivo"), (req, res) => {
     const partes = linea.trim().split(/\s+/);
 
     if (partes.length >= 3) {
-      registros.push({
-        id_empleado: partes[0],
-        fecha_hora: partes[1] + " " + partes[2]
-      });
+      const id = partes[0];
+      const fecha = partes[1];
+      const hora = partes[2];
+
+      const key = id + "_" + fecha;
+
+      if (!asistencia[key]) {
+        asistencia[key] = {
+          id_empleado: id,
+          fecha,
+          horas: []
+        };
+      }
+
+      asistencia[key].horas.push(hora);
     }
-  });
-
-  let asistencia = {};
-
-  registros.forEach(r => {
-    const [fecha, hora] = r.fecha_hora.split(" ");
-    const key = r.id_empleado + "_" + fecha;
-
-    if (!asistencia[key]) {
-      asistencia[key] = {
-        id_empleado: r.id_empleado,
-        fecha: fecha,
-        horas: []
-      };
-    }
-
-    asistencia[key].horas.push(hora);
   });
 
   let resultado = [];
-
-  const HORA_LIMITE = "08:00:00";
-  const DESCUENTO = 5;
-  const PAGO = 50;
 
   for (let key in asistencia) {
     let item = asistencia[key];
@@ -94,82 +126,43 @@ app.post("/upload", upload.single("archivo"), (req, res) => {
 
     let entrada = item.horas[0];
     let salida = item.horas[item.horas.length - 1];
-
-    let estado = "Puntual";
-    let descuento = 0;
-
-    if (entrada > HORA_LIMITE) {
-      estado = "Tardanza";
-      descuento = DESCUENTO;
-    }
+    let estado = entrada > "08:00:00" ? "Tardanza" : "Puntual";
 
     resultado.push({
       id_empleado: item.id_empleado,
       fecha: item.fecha,
       entrada,
       salida,
-      estado,
-      descuento,
-      pago: PAGO
+      estado
     });
 
     db.query(
-      "INSERT INTO asistencia (id_empleado, fecha, entrada, salida, estado, descuento) VALUES (?, ?, ?, ?, ?, ?)",
-      [
-        item.id_empleado,
-        item.fecha,
-        entrada,
-        salida,
-        estado,
-        descuento
-      ],
-      (err) => {
-        if (err) {
-          console.error("Error insert:", err);
-        }
-      }
+      `INSERT INTO asistencia 
+      (id_empleado, fecha, entrada, salida, estado)
+      VALUES (?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+      entrada=VALUES(entrada),
+      salida=VALUES(salida),
+      estado=VALUES(estado)`,
+      [item.id_empleado, item.fecha, entrada, salida, estado]
     );
   }
 
-  let resumen = {};
+  res.json(resultado);
+});
 
-  resultado.forEach(r => {
-    if (!resumen[r.id_empleado]) {
-      resumen[r.id_empleado] = {
-        id_empleado: r.id_empleado,
-        dias: 0,
-        total_pago: 0,
-        total_descuento: 0,
-        total_final: 0
-      };
+app.get("/dashboard-data", auth, (req, res) => {
+  db.query(
+    `SELECT COUNT(*) total,
+     SUM(estado='Puntual') puntual,
+     SUM(estado='Tardanza') tardanza
+     FROM asistencia`,
+    (err, result) => {
+      res.json(result[0]);
     }
-
-    resumen[r.id_empleado].dias += 1;
-    resumen[r.id_empleado].total_pago += r.pago;
-    resumen[r.id_empleado].total_descuento += r.descuento;
-    resumen[r.id_empleado].total_final =
-      resumen[r.id_empleado].total_pago -
-      resumen[r.id_empleado].total_descuento;
-  });
-
-  res.json({
-    detalle: resultado,
-    resumen: Object.values(resumen)
-  });
+  );
 });
 
-// 🔥 HISTORIAL DESDE DB
-app.get("/historial", (req, res) => {
-  db.query("SELECT * FROM asistencia ORDER BY fecha DESC", (err, results) => {
-    if (err) {
-      console.error("Error consulta:", err);
-      return res.status(500).json({ error: "Error al obtener datos" });
-    }
+app.use(express.static(__dirname));
 
-    res.json(results);
-  });
-});
-
-app.listen(3000, () => {
-  console.log("Servidor en http://localhost:3000");
-});
+app.listen(3000, () => console.log("Servidor activo"));

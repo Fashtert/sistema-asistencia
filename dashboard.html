@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+  width: 220px;
+  background: #2c3e50;
+  color: white;
+  height: 100vh;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  margin-bottom: 30px;
+}
+
+.sidebar p {
+  margin: 10px 0;
+  cursor: pointer;
+}
+
+/* CONTENIDO */
+.main {
+  flex: 1;
+  background: #ecf0f1;
+  padding: 20px;
+}
+
+/* CARDS */
+.card {
+  display: inline-block;
+  width: 200px;
+  padding: 20px;
+  margin: 10px;
+  color: white;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.blue { background:#3498db; }
+.green { background:#1abc9c; }
+.red { background:#e74c3c; }
+
+.grafico {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h2>SIS ASISTENCIA</h2>
+  <p onclick="window.location='/index.html'">Asistencia</p>
+  <p onclick="logout()">Cerrar sesión</p>
+</div>
+
+<div class="main">
+
+  <h2>Dashboard General</h2>
+
+  <div>
+    <div class="card blue">
+      <h3>Total</h3>
+      <p id="total">0</p>
+    </div>
+
+    <div class="card green">
+      <h3>Puntuales</h3>
+      <p id="puntual">0</p>
+    </div>
+
+    <div class="card red">
+      <h3>Tardanzas</h3>
+      <p id="tardanza">0</p>
+    </div>
+  </div>
+
+  <div class="grafico">
+    <canvas id="grafico"></canvas>
+  </div>
+
+</div>
+
+<script>
+async function cargar(){
+  const res = await fetch("/dashboard-data");
+  const data = await res.json();
+
+  document.getElementById("total").innerText = data.total || 0;
+  document.getElementById("puntual").innerText = data.puntual || 0;
+  document.getElementById("tardanza").innerText = data.tardanza || 0;
+
+  new Chart(document.getElementById("grafico"),{
+    type:"doughnut",
+    data:{
+      labels:["Puntual","Tardanza"],
+      datasets:[{
+        data:[data.puntual||0, data.tardanza||0]
+      }]
+    }
+  });
+}
+
+function logout(){
+  window.location = "/logout";
+}
+
+cargar();
+</script>
+
+</body>
+</html>
