@@ -2,62 +2,82 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard</title>
+<title>Panel Admin</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial;
-  display: flex;
-}
+body { margin:0; font-family:Arial; display:flex; }
 
-/* SIDEBAR */
 .sidebar {
-  width: 220px;
-  background: #2c3e50;
-  color: white;
-  height: 100vh;
-  padding: 20px;
+  width:240px;
+  background:#2c3e50;
+  color:white;
+  height:100vh;
+  padding:20px;
 }
 
-.sidebar h2 {
-  margin-bottom: 30px;
-}
+.sidebar h2 { margin-bottom:20px; }
+.sidebar p { cursor:pointer; margin:10px 0; }
 
-.sidebar p {
-  margin: 10px 0;
-  cursor: pointer;
-}
-
-/* CONTENIDO */
 .main {
-  flex: 1;
-  background: #ecf0f1;
-  padding: 20px;
+  flex:1;
+  background:#ecf0f1;
+  padding:20px;
 }
 
-/* CARDS */
+.section { display:none; }
+.active { display:block; }
+
+.perfil {
+  background:white;
+  padding:30px;
+  border-radius:10px;
+  text-align:center;
+}
+
+.perfil img {
+  width:100px;
+  border-radius:50%;
+}
+
+.cards { display:flex; gap:10px; }
+
 .card {
-  display: inline-block;
-  width: 200px;
-  padding: 20px;
-  margin: 10px;
-  color: white;
-  border-radius: 10px;
-  text-align: center;
+  flex:1;
+  padding:20px;
+  border-radius:10px;
+  color:white;
+  text-align:center;
 }
 
-.blue { background:#3498db; }
-.green { background:#1abc9c; }
-.red { background:#e74c3c; }
+.blue{background:#3498db;}
+.green{background:#1abc9c;}
+.red{background:#e74c3c;}
 
-.grafico {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  margin-top: 20px;
+.box {
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  margin-top:20px;
+}
+
+table { width:100%; border-collapse:collapse; }
+
+th {
+  background:#3498db;
+  color:white;
+  padding:10px;
+}
+
+td {
+  padding:10px;
+  border-bottom:1px solid #ddd;
+}
+
+.icon {
+  cursor:pointer;
+  margin:0 5px;
 }
 </style>
 </head>
@@ -65,40 +85,201 @@ body {
 <body>
 
 <div class="sidebar">
-  <h2>SIS ASISTENCIA</h2>
-  <p onclick="window.location='/index.html'">Asistencia</p>
+  <h2>ADMIN</h2>
+  <p onclick="mostrar('perfil')">Perfil</p>
+  <p onclick="mostrar('upload')">Subir archivo</p>
+  <p onclick="mostrar('dashboard')">Dashboard</p>
+  <p onclick="mostrar('asistencia')">Registro asistencia</p>
+  <p onclick="mostrar('logs')">Logs</p>
+  <p onclick="mostrar('empleados')">Empleados</p>
   <p onclick="logout()">Cerrar sesión</p>
 </div>
 
 <div class="main">
 
-  <h2>Dashboard General</h2>
+<!-- PERFIL -->
+<div id="perfil" class="section active">
+  <div class="perfil">
+    <img src="https://cdn-icons-png.flaticon.com/512/149/149071.png">
+    <h2 id="nombreUser"></h2>
+    <p id="rolUser"></p>
+  </div>
+</div>
 
-  <div>
+<!-- SUBIR ARCHIVO -->
+<div id="upload" class="section">
+  <h2>Subir archivo biométrico</h2>
+
+  <div class="box">
+    <input type="file" id="archivo">
+    <br><br>
+    <button onclick="subirArchivo()">Procesar</button>
+
+    <p id="estadoUpload"></p>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" class="section">
+  <h2>Dashboard</h2>
+
+  <div class="cards">
     <div class="card blue">
       <h3>Total</h3>
       <p id="total">0</p>
     </div>
 
     <div class="card green">
-      <h3>Puntuales</h3>
+      <h3>Puntual</h3>
       <p id="puntual">0</p>
     </div>
 
     <div class="card red">
-      <h3>Tardanzas</h3>
+      <h3>Tardanza</h3>
       <p id="tardanza">0</p>
     </div>
   </div>
 
-  <div class="grafico">
+  <div class="box">
     <canvas id="grafico"></canvas>
+  </div>
+</div>
+
+<!-- ASISTENCIA -->
+<div id="asistencia" class="section">
+  <h2>Registro de Asistencia</h2>
+
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>DNI</th>
+          <th>Nombre</th>
+          <th>Fecha</th>
+          <th>Entrada</th>
+          <th>Salida</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tablaAsistencia"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- LOGS -->
+<div id="logs" class="section">
+  <h2>Logs</h2>
+
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Acción</th>
+          <th>Descripción</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody id="tablaLogs"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- EMPLEADOS -->
+<div id="empleados" class="section">
+
+  <h2>Gestión de Empleados</h2>
+
+  <div class="box">
+    <input type="text" id="dni" placeholder="DNI">
+    <input type="text" id="nombre" placeholder="Nombre">
+    <input type="text" id="cargo" placeholder="Cargo">
+    <button onclick="guardarEmpleado()">Guardar</button>
+  </div>
+
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>DNI</th>
+          <th>Nombre</th>
+          <th>Cargo</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tablaEmpleados"></tbody>
+    </table>
   </div>
 
 </div>
 
+</div>
+
 <script>
-async function cargar(){
+
+/* NAV */
+function mostrar(sec){
+  document.querySelectorAll(".section").forEach(s=>s.classList.remove("active"));
+  document.getElementById(sec).classList.add("active");
+
+  if(sec==="dashboard") cargarDashboard();
+  if(sec==="logs") cargarLogs();
+  if(sec==="empleados") cargarEmpleados();
+  if(sec==="asistencia") cargarAsistencia();
+}
+
+/* PERFIL */
+async function cargarPerfil(){
+  const res = await fetch("/me");
+  const user = await res.json();
+
+  document.getElementById("nombreUser").innerText = user.username;
+  document.getElementById("rolUser").innerText = user.rol;
+}
+
+/* UPLOAD */
+async function subirArchivo(){
+
+  const archivo = document.getElementById("archivo").files[0];
+  const estado = document.getElementById("estadoUpload");
+
+  if(!archivo){
+    alert("Selecciona archivo");
+    return;
+  }
+
+  estado.innerText = "Procesando...";
+
+  const formData = new FormData();
+  formData.append("archivo", archivo);
+
+  const res = await fetch("/upload",{
+    method:"POST",
+    body:formData
+  });
+
+  if(res.ok){
+    estado.innerText = "Procesado correctamente";
+
+    // 🔥 ACTIVAR VISUALIZACIÓN
+    sessionStorage.setItem("dataCargada", "true");
+
+  }else{
+    estado.innerText = "Error";
+  }
+}
+
+/* DASHBOARD */
+async function cargarDashboard(){
+
+  if(!sessionStorage.getItem("dataCargada")){
+    document.getElementById("total").innerText = 0;
+    document.getElementById("puntual").innerText = 0;
+    document.getElementById("tardanza").innerText = 0;
+    return;
+  }
+
   const res = await fetch("/dashboard-data");
   const data = await res.json();
 
@@ -111,17 +292,123 @@ async function cargar(){
     data:{
       labels:["Puntual","Tardanza"],
       datasets:[{
-        data:[data.puntual||0, data.tardanza||0]
+        data:[data.puntual||0,data.tardanza||0]
       }]
     }
   });
 }
 
-function logout(){
-  window.location = "/logout";
+/* ASISTENCIA */
+async function cargarAsistencia(){
+
+  const tabla = document.getElementById("tablaAsistencia");
+  tabla.innerHTML = "";
+
+  if(!sessionStorage.getItem("dataCargada")){
+    return; // 👈 no muestra nada
+  }
+
+  const res = await fetch("/asistencia");
+  const data = await res.json();
+
+  data.forEach(a=>{
+    tabla.innerHTML+=`
+      <tr>
+        <td>${a.id_empleado}</td>
+        <td>${a.nombres || "-"}</td>
+        <td>${a.fecha}</td>
+        <td>${a.entrada}</td>
+        <td>${a.salida}</td>
+        <td>${a.estado}</td>
+      </tr>
+    `;
+  });
 }
 
-cargar();
+/* LOGS */
+async function cargarLogs(){
+  const res = await fetch("/logs");
+  const data = await res.json();
+
+  const tabla = document.getElementById("tablaLogs");
+  tabla.innerHTML="";
+
+  data.forEach(l=>{
+    tabla.innerHTML+=`
+      <tr>
+        <td>${l.usuario_id}</td>
+        <td>${l.accion}</td>
+        <td>${l.descripcion}</td>
+        <td>${new Date(l.fecha).toLocaleString()}</td>
+      </tr>
+    `;
+  });
+}
+
+/* EMPLEADOS */
+async function guardarEmpleado(){
+  const dni=document.getElementById("dni").value;
+  const nombre=document.getElementById("nombre").value;
+  const cargo=document.getElementById("cargo").value;
+
+  await fetch("/empleados",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({dni,nombre,cargo})
+  });
+
+  cargarEmpleados();
+}
+
+async function cargarEmpleados(){
+  const res=await fetch("/empleados");
+  const data=await res.json();
+
+  const tabla=document.getElementById("tablaEmpleados");
+  tabla.innerHTML="";
+
+  data.forEach(e=>{
+    tabla.innerHTML+=`
+      <tr>
+        <td>${e.id}</td>
+        <td><input value="${e.dni}" id="dni${e.id}"></td>
+        <td><input value="${e.nombres}" id="nom${e.id}"></td>
+        <td><input value="${e.cargo}" id="car${e.id}"></td>
+        <td>
+          <span class="icon" onclick="actualizar(${e.id})">💾</span>
+          <span class="icon" onclick="eliminar(${e.id})">🗑️</span>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function actualizar(id){
+  const dni=document.getElementById("dni"+id).value;
+  const nombre=document.getElementById("nom"+id).value;
+  const cargo=document.getElementById("car"+id).value;
+
+  await fetch("/empleados/"+id,{
+    method:"PUT",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({dni,nombre,cargo})
+  });
+
+  alert("Actualizado");
+}
+
+async function eliminar(id){
+  await fetch("/empleados/"+id,{method:"DELETE"});
+  cargarEmpleados();
+}
+
+function logout(){
+  window.location="/logout";
+}
+
+/* INIT */
+cargarPerfil();
+
 </script>
 
 </body>

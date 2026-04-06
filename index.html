@@ -2,184 +2,210 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Sistema de Asistencia</title>
+<title>Asistencia</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-body {
-  margin: 0;
-  font-family: Arial;
-  display: flex;
-}
+body { margin:0; font-family:Arial; display:flex; }
 
-/* SIDEBAR */
 .sidebar {
-  width: 220px;
-  background: #2c3e50;
-  color: white;
-  height: 100vh;
-  padding: 20px;
+  width:220px;
+  background:#2c3e50;
+  color:white;
+  height:100vh;
+  padding:20px;
 }
 
-.sidebar h2 {
-  margin-bottom: 30px;
-}
-
-.sidebar p {
-  margin: 10px 0;
-  cursor: pointer;
-}
-
-/* CONTENIDO */
 .main {
-  flex: 1;
-  background: #ecf0f1;
-  padding: 20px;
-}
-
-.card {
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-}
-
-/* BOTONES */
-button {
-  padding: 10px 15px;
-  background: #3498db;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #2980b9;
+  flex:1;
+  background:#ecf0f1;
+  padding:20px;
 }
 
 /* TABLA */
 table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
+  width:100%;
+  border-collapse:collapse;
 }
 
 th {
-  background: #3498db;
-  color: white;
-  padding: 10px;
+  background:#3498db;
+  color:white;
+  padding:10px;
 }
 
 td {
-  padding: 10px;
-  border-bottom: 1px solid #ddd;
+  padding:10px;
+  border-bottom:1px solid #ddd;
 }
 
-.hidden {
-  display: none;
+/* MODAL */
+.modal {
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.6);
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+
+.modal-content {
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  width:600px;
+  display:flex;
+  gap:20px;
+}
+
+.modal img {
+  width:150px;
+  height:150px;
+  object-fit:cover;
 }
 </style>
 </head>
 
 <body>
 
-<!-- SIDEBAR -->
 <div class="sidebar">
-  <h2>SIS ASISTENCIA</h2>
-  <p>Inicio</p>
-  <p>Asistencias</p>
-  <p>Reportes</p>
+  <h2>ASISTENCIA</h2>
+  <p onclick="location.reload()">Inicio</p>
+  <p onclick="logout()">Salir</p>
 </div>
 
-<!-- CONTENIDO -->
 <div class="main">
 
-  <h2>Panel de Asistencia</h2>
+<h2>Control de Asistencia</h2>
 
-  <!-- SUBIDA -->
-  <div class="card">
-    <h3>Subir archivo biométrico</h3>
+<!-- BUSCADOR -->
+<input type="text" id="buscar" placeholder="Buscar DNI o nombre">
+<button onclick="buscarEmpleado()">Buscar</button>
 
-    <input type="file" id="archivo">
-    <br><br>
-    <button onclick="enviar()">Procesar Asistencia</button>
+<!-- SUBIR -->
+<br><br>
+<input type="file" id="archivo">
+<button onclick="enviar()">Subir Archivo</button>
 
-    <p id="estado"></p>
+<!-- TABLA -->
+<table>
+<thead>
+<tr>
+<th>DNI</th>
+<th>Fecha</th>
+<th>Entrada</th>
+<th>Salida</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody id="tabla"></tbody>
+</table>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="modal">
+  <div class="modal-content">
+    
+    <div>
+      <img id="foto">
+      <p id="nombre"></p>
+      <p id="dni"></p>
+      <p id="cargo"></p>
+    </div>
+
+    <div>
+      <canvas id="graficoEmpleado"></canvas>
+    </div>
+
   </div>
-
-  <!-- TABLA -->
-  <div id="contenedorTabla" class="card hidden">
-    <h3>Resultados</h3>
-
-    <table>
-      <thead>
-        <tr>
-          <th>DNI</th>
-          <th>Fecha</th>
-          <th>Entrada</th>
-          <th>Salida</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody id="tabla"></tbody>
-    </table>
-  </div>
-
 </div>
 
 <script>
-async function enviar() {
+
+/* CARGAR TABLA */
+async function cargar(){
+  const res = await fetch("/asistencias");
+  const data = await res.json();
+
+  const tabla = document.getElementById("tabla");
+  tabla.innerHTML="";
+
+  data.forEach(a=>{
+    tabla.innerHTML+=`
+      <tr onclick="verDetalle('${a.id_empleado}')">
+        <td>${a.id_empleado}</td>
+        <td>${a.fecha}</td>
+        <td>${a.entrada}</td>
+        <td>${a.salida}</td>
+        <td>${a.estado}</td>
+      </tr>
+    `;
+  });
+}
+
+/* BUSCAR */
+async function buscarEmpleado(){
+  const buscar = document.getElementById("buscar").value;
+
+  const res = await fetch("/empleado-detalle?buscar="+buscar);
+  const data = await res.json();
+
+  if(!data) return alert("No encontrado");
+
+  mostrarModal(data);
+}
+
+/* MODAL */
+function mostrarModal(data){
+
+  document.getElementById("modal").style.display="flex";
+
+  document.getElementById("foto").src = data.foto || "https://via.placeholder.com/150";
+  document.getElementById("nombre").innerText = data.nombres;
+  document.getElementById("dni").innerText = "DNI: "+data.dni;
+  document.getElementById("cargo").innerText = data.cargo;
+
+  new Chart(document.getElementById("graficoEmpleado"),{
+    type:"bar",
+    data:{
+      labels:["Puntual","Tardanza"],
+      datasets:[{
+        data:[data.puntual||0, data.tardanza||0]
+      }]
+    }
+  });
+
+}
+
+/* CERRAR MODAL */
+document.getElementById("modal").onclick = function(){
+  this.style.display="none";
+}
+
+/* SUBIR */
+async function enviar(){
   const archivo = document.getElementById("archivo").files[0];
-  const estado = document.getElementById("estado");
-
-  if (!archivo) {
-    alert("Selecciona un archivo");
-    return;
-  }
-
-  estado.innerText = "Procesando...";
 
   const formData = new FormData();
   formData.append("archivo", archivo);
 
-  try {
-    const res = await fetch("/upload", {
-      method: "POST",
-      body: formData
-    });
+  await fetch("/upload",{ method:"POST", body:formData });
 
-    if (!res.ok) throw new Error("Error servidor");
-
-    const data = await res.json();
-
-    const tabla = document.getElementById("tabla");
-    const contenedor = document.getElementById("contenedorTabla");
-
-    tabla.innerHTML = "";
-
-    data.forEach(item => {
-      const fila = document.createElement("tr");
-
-      fila.innerHTML = `
-        <td>${item.id_empleado}</td>
-        <td>${item.fecha}</td>
-        <td>${item.entrada}</td>
-        <td>${item.salida}</td>
-        <td>${item.estado}</td>
-      `;
-
-      tabla.appendChild(fila);
-    });
-
-    contenedor.classList.remove("hidden");
-    estado.innerText = "Datos cargados correctamente";
-
-  } catch (error) {
-    console.error(error);
-    estado.innerText = "Error al procesar archivo";
-  }
+  cargar();
 }
+
+/* LOGOUT */
+function logout(){
+  window.location="/logout";
+}
+
+cargar();
+
 </script>
 
 </body>
