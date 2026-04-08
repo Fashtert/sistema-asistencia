@@ -48,6 +48,7 @@ app.post("/login", (req, res) => {
     "SELECT * FROM usuarios WHERE username=?",
     [username],
     async (err, result) => {
+      if (err) return res.status(500).json({ success: false });
       if (result.length === 0) return res.json({ success: false });
 
       const user = result[0];
@@ -65,7 +66,12 @@ app.post("/login", (req, res) => {
 
       if (!acceso) return res.json({ success: false });
 
-      req.session.user = user;
+      req.session.user = {
+        id: user.id,
+        username: user.username,
+        rol: user.rol
+      };
+
       registrarLog(user.id, "LOGIN", "Inicio sesión", req.ip);
 
       res.json({ success: true, rol: user.rol });
@@ -157,7 +163,7 @@ app.post("/perfil/foto", auth, uploadPerfil.single("foto"), (req, res) => {
               if (fotoAnterior) {
                 const rutaFisica = path.join(__dirname, fotoAnterior);
                 if (fs.existsSync(rutaFisica)) {
-                  try { fs.unlinkSync(rutaFisica); } catch(e){}
+                  try { fs.unlinkSync(rutaFisica); } catch (e) { }
                 }
               }
 
@@ -314,26 +320,149 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
 });
 
 app.get("/dashboard-data", auth, (req, res) => {
-  db.query(
-    `SELECT COUNT(*) total,
-     SUM(estado='Puntual') puntual,
-     SUM(estado='Tardanza') tardanza
-     FROM asistencia`,
-    (err, result) => res.json(result[0])
-  );
+
+  const { tipo, fecha } = req.query;
+
+  let condicion = "";
+  let params = [];
+
+  if (tipo === "dia" && fecha) {
+    condicion = "WHERE fecha = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "mes" && fecha) {
+    condicion = "WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "anio" && fecha) {
+    condicion = "WHERE YEAR(fecha) = ?";
+    params.push(fecha);
+  }
+
+  // 🔥 total empleados (SIEMPRE global)
+  db.query("SELECT COUNT(*) AS total_empleados FROM empleados", (err, emp) => {
+
+    // 🔥 asistencia filtrada
+    db.query(
+      `SELECT 
+        COUNT(*) total_asistencia,
+        SUM(estado='Puntual') puntual,
+        SUM(estado='Tardanza') tardanza
+      FROM asistencia
+      ${condicion}`,
+      params,
+      (err2, data) => {
+
+        res.json({
+          total_empleados: emp[0].total_empleados || 0,
+          total_asistencia: data[0].total_asistencia || 0,
+          puntual: data[0].puntual || 0,
+          tardanza: data[0].tardanza || 0
+        });
+
+      }
+    );
+
+  });
+
 });
 
-app.get("/asistencia", auth, (req, res) => {
+app.get("/asistencia-filtrada", auth, (req, res) => {
+
+  const { tipo, fecha, desde, hasta } = req.query;
+
+  let condicion = "";
+  let params = [];
+
+  if (tipo === "dia" && fecha) {
+    condicion = "WHERE a.fecha = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "mes" && fecha) {
+    condicion = "WHERE DATE_FORMAT(a.fecha,'%Y-%m') = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "rango" && desde && hasta) {
+    condicion = "WHERE a.fecha BETWEEN ? AND ?";
+    params.push(desde, hasta);
+  }
+
   db.query(`
-    SELECT a.*, e.nombres
+    SELECT a.*, e.nombres, e.apellido, e.cargo,
+    (e.nombres IS NULL OR e.apellido='' OR e.cargo='' OR e.nombres='Sin nombre') AS incompleto
     FROM asistencia a
     LEFT JOIN empleados e ON e.dni = a.id_empleado
-    ORDER BY fecha DESC, entrada DESC
-    LIMIT 200
-  `, (err, result) => {
+    ${condicion}
+    ORDER BY a.fecha DESC
+  `, params, (err, result) => {
+
     if (err) return res.status(500).json([]);
-    res.json(result);
+
+    const incompletos = result.filter(r => r.incompleto);
+    const completos = result.filter(r => !r.incompleto);
+
+    res.json({ incompletos, completos });
+
   });
+
+});
+
+const ExcelJS = require("exceljs");
+
+app.get("/exportar-excel", auth, async (req, res) => {
+
+  const { tipo, fecha, desde, hasta } = req.query;
+
+  let condicion = "";
+  let params = [];
+
+  if (tipo === "dia") {
+    condicion = "WHERE fecha = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "mes") {
+    condicion = "WHERE DATE_FORMAT(fecha,'%Y-%m') = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "rango") {
+    condicion = "WHERE fecha BETWEEN ? AND ?";
+    params.push(desde, hasta);
+  }
+
+  const [rows] = await db.promise().query(`
+    SELECT * FROM asistencia
+    ${condicion}
+  `, params);
+
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Asistencia");
+
+  sheet.columns = [
+    { header: "DNI", key: "id_empleado" },
+    { header: "Fecha", key: "fecha" },
+    { header: "Entrada", key: "entrada" },
+    { header: "Salida", key: "salida" },
+    { header: "Estado", key: "estado" }
+  ];
+
+  rows.forEach(r => sheet.addRow(r));
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+
+  res.setHeader("Content-Disposition", "attachment; filename=asistencia.xlsx");
+
+  await workbook.xlsx.write(res);
+  res.end();
+
 });
 
 app.get("/logs", auth, (req, res) => {
