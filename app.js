@@ -13,21 +13,23 @@ const db = mysql.createConnection({
   user: "root",
   password: "123456",
   database: "asistencia_db",
-  port: 3307
+  port: 3307,
 });
 
-db.connect(err => {
+db.connect((err) => {
   if (err) console.log(err);
   else console.log("MySQL conectado");
 });
 
 app.use(express.json());
 
-app.use(session({
-  secret: "clave_super_segura",
-  resave: false,
-  saveUninitialized: false
-}));
+app.use(
+  session({
+    secret: "clave_super_segura",
+    resave: false,
+    saveUninitialized: false,
+  }),
+);
 
 function auth(req, res, next) {
   if (!req.session.user) return res.redirect("/login.html");
@@ -37,7 +39,7 @@ function auth(req, res, next) {
 function registrarLog(usuario_id, accion, descripcion, ip) {
   db.query(
     "INSERT INTO logs (usuario_id, accion, descripcion, ip) VALUES (?, ?, ?, ?)",
-    [usuario_id, accion, descripcion, ip]
+    [usuario_id, accion, descripcion, ip],
   );
 }
 
@@ -60,7 +62,10 @@ app.post("/login", (req, res) => {
         if (password === user.password) {
           acceso = true;
           const hash = await bcrypt.hash(password, 10);
-          db.query("UPDATE usuarios SET password=? WHERE id=?", [hash, user.id]);
+          db.query("UPDATE usuarios SET password=? WHERE id=?", [
+            hash,
+            user.id,
+          ]);
         }
       }
 
@@ -69,13 +74,13 @@ app.post("/login", (req, res) => {
       req.session.user = {
         id: user.id,
         username: user.username,
-        rol: user.rol
+        rol: user.rol,
       };
 
       registrarLog(user.id, "LOGIN", "Inicio sesión", req.ip);
 
       res.json({ success: true, rol: user.rol });
-    }
+    },
   );
 });
 
@@ -84,7 +89,9 @@ app.get("/me", auth, (req, res) => {
 });
 
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "login.html")));
-app.get("/login.html", (req, res) => res.sendFile(path.join(__dirname, "login.html")));
+app.get("/login.html", (req, res) =>
+  res.sendFile(path.join(__dirname, "login.html")),
+);
 
 app.get("/index.html", auth, (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
@@ -105,7 +112,7 @@ app.get("/logout", (req, res) => {
 
 const storage = multer.diskStorage({
   destination: "uploads/",
-  filename: (req, file, cb) => cb(null, file.originalname)
+  filename: (req, file, cb) => cb(null, file.originalname),
 });
 const upload = multer({ storage });
 
@@ -115,7 +122,7 @@ const storagePerfil = multer.diskStorage({
   filename: (req, file, cb) => {
     const nombre = "perfil_" + Date.now() + path.extname(file.originalname);
     cb(null, nombre);
-  }
+  },
 });
 
 const uploadPerfil = multer({
@@ -125,12 +132,11 @@ const uploadPerfil = multer({
     if (tipos.includes(file.mimetype)) cb(null, true);
     else cb(null, false);
   },
-  limits: { fileSize: 2 * 1024 * 1024 } // 2MB
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
 });
 
 // subir foto perfil (MEJORADO)
 app.post("/perfil/foto", auth, uploadPerfil.single("foto"), (req, res) => {
-
   const user = req.session.user;
 
   if (!req.file) return res.status(400).json({ error: true });
@@ -142,13 +148,11 @@ app.post("/perfil/foto", auth, uploadPerfil.single("foto"), (req, res) => {
     "INSERT IGNORE INTO empleados (dni, nombres, cargo) VALUES (?, ?, ?)",
     [user.username, user.username, "Sin cargo"],
     () => {
-
       // 🔥 obtener foto anterior
       db.query(
         "SELECT foto FROM empleados WHERE dni=?",
         [user.username],
         (err, result) => {
-
           const fotoAnterior = result[0]?.foto;
 
           // 🔥 actualizar nueva foto
@@ -156,26 +160,26 @@ app.post("/perfil/foto", auth, uploadPerfil.single("foto"), (req, res) => {
             "UPDATE empleados SET foto=? WHERE dni=?",
             [ruta, user.username],
             (err2) => {
-
               if (err2) return res.status(500).json({ error: true });
 
               // 🔥 eliminar foto anterior (si existe)
               if (fotoAnterior) {
                 const rutaFisica = path.join(__dirname, fotoAnterior);
                 if (fs.existsSync(rutaFisica)) {
-                  try { fs.unlinkSync(rutaFisica); } catch (e) { }
+                  try {
+                    fs.unlinkSync(rutaFisica);
+                  } catch (e) {}
                 }
               }
 
               registrarLog(user.id, "FOTO_PERFIL", "Actualizó foto", req.ip);
 
               res.json({ success: true, ruta });
-            }
+            },
           );
-        }
+        },
       );
-
-    }
+    },
   );
 });
 
@@ -193,7 +197,7 @@ app.put("/perfil", auth, (req, res) => {
     (err) => {
       if (err) return res.status(500).json({ error: true });
       res.json({ success: true });
-    }
+    },
   );
 });
 
@@ -213,12 +217,12 @@ app.get("/perfil", auth, (req, res) => {
           apellido: "",
           dni: user.username,
           cargo: "",
-          foto: null
+          foto: null,
         });
       }
 
       res.json(result[0]);
-    }
+    },
   );
 });
 
@@ -243,7 +247,7 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
 
     let asistencia = {};
 
-    lineas.forEach(linea => {
+    lineas.forEach((linea) => {
       if (!linea.trim()) return;
 
       const partes = linea.trim().split(/\s+/);
@@ -268,7 +272,7 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
     let resultado = [];
     let completados = 0;
 
-    keys.forEach(key => {
+    keys.forEach((key) => {
       let item = asistencia[key];
       const { entrada, salida, estado } = evaluarAsistencia(item.horas);
 
@@ -277,12 +281,12 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
         fecha: item.fecha,
         entrada,
         salida,
-        estado
+        estado,
       });
 
       db.query(
         "INSERT IGNORE INTO empleados (dni, nombres, cargo) VALUES (?, ?, ?)",
-        [item.id_empleado, "Sin nombre", "Sin cargo"]
+        [item.id_empleado, "Sin nombre", "Sin cargo"],
       );
 
       db.query(
@@ -298,21 +302,22 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
           completados++;
 
           if (completados === keys.length) {
-            try { fs.unlinkSync(req.file.path); } catch (e) { }
+            try {
+              fs.unlinkSync(req.file.path);
+            } catch (e) {}
 
             registrarLog(
               req.session.user.id,
               "UPLOAD",
               "Subió archivo",
-              req.ip
+              req.ip,
             );
 
             return res.json(resultado);
           }
-        }
+        },
       );
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: true });
@@ -320,7 +325,6 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
 });
 
 app.get("/dashboard-data", auth, (req, res) => {
-
   const { tipo, fecha } = req.query;
 
   let condicion = "";
@@ -343,7 +347,6 @@ app.get("/dashboard-data", auth, (req, res) => {
 
   // 🔥 total empleados (SIEMPRE global)
   db.query("SELECT COUNT(*) AS total_empleados FROM empleados", (err, emp) => {
-
     // 🔥 asistencia filtrada
     db.query(
       `SELECT 
@@ -354,23 +357,18 @@ app.get("/dashboard-data", auth, (req, res) => {
       ${condicion}`,
       params,
       (err2, data) => {
-
         res.json({
           total_empleados: emp[0].total_empleados || 0,
           total_asistencia: data[0].total_asistencia || 0,
           puntual: data[0].puntual || 0,
-          tardanza: data[0].tardanza || 0
+          tardanza: data[0].tardanza || 0,
         });
-
-      }
+      },
     );
-
   });
-
 });
 
 app.get("/asistencia-filtrada", auth, (req, res) => {
-
   const { tipo, fecha, desde, hasta } = req.query;
 
   let condicion = "";
@@ -391,30 +389,30 @@ app.get("/asistencia-filtrada", auth, (req, res) => {
     params.push(desde, hasta);
   }
 
-  db.query(`
+  db.query(
+    `
     SELECT a.*, e.nombres, e.apellido, e.cargo,
     (e.nombres IS NULL OR e.apellido='' OR e.cargo='' OR e.nombres='Sin nombre') AS incompleto
     FROM asistencia a
     LEFT JOIN empleados e ON e.dni = a.id_empleado
     ${condicion}
     ORDER BY a.fecha DESC
-  `, params, (err, result) => {
+  `,
+    params,
+    (err, result) => {
+      if (err) return res.status(500).json([]);
 
-    if (err) return res.status(500).json([]);
+      const incompletos = result.filter((r) => r.incompleto);
+      const completos = result.filter((r) => !r.incompleto);
 
-    const incompletos = result.filter(r => r.incompleto);
-    const completos = result.filter(r => !r.incompleto);
-
-    res.json({ incompletos, completos });
-
-  });
-
+      res.json({ incompletos, completos });
+    },
+  );
 });
 
 const ExcelJS = require("exceljs");
 
 app.get("/exportar-excel", auth, async (req, res) => {
-
   const { tipo, fecha, desde, hasta } = req.query;
 
   let condicion = "";
@@ -435,10 +433,13 @@ app.get("/exportar-excel", auth, async (req, res) => {
     params.push(desde, hasta);
   }
 
-  const [rows] = await db.promise().query(`
+  const [rows] = await db.promise().query(
+    `
     SELECT * FROM asistencia
     ${condicion}
-  `, params);
+  `,
+    params,
+  );
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Asistencia");
@@ -448,60 +449,164 @@ app.get("/exportar-excel", auth, async (req, res) => {
     { header: "Fecha", key: "fecha" },
     { header: "Entrada", key: "entrada" },
     { header: "Salida", key: "salida" },
-    { header: "Estado", key: "estado" }
+    { header: "Estado", key: "estado" },
   ];
 
-  rows.forEach(r => sheet.addRow(r));
+  rows.forEach((r) => sheet.addRow(r));
 
   res.setHeader(
     "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   );
 
   res.setHeader("Content-Disposition", "attachment; filename=asistencia.xlsx");
 
   await workbook.xlsx.write(res);
   res.end();
-
 });
 
 app.get("/logs", auth, (req, res) => {
-  db.query(`
+  db.query(
+    `
     SELECT l.*, u.username
     FROM logs l
     LEFT JOIN usuarios u ON u.id = l.usuario_id
     ORDER BY l.fecha DESC
-  `, (err, result) => {
+  `,
+    (err, result) => {
+      if (err) return res.status(500).json([]);
+      res.json(result);
+    },
+  );
+});
+
+app.post("/empleados", auth, uploadPerfil.single("foto"), (req, res) => {
+  const { dni, nombre, apellido, telefono, nacionalidad, cargo, fecha, turno } =
+    req.body;
+  const foto = req.file ? "/uploads/perfiles/" + req.file.filename : null;
+
+  // ✅ VALIDACIÓN
+  if (
+    !dni ||
+    !nombre ||
+    !apellido ||
+    !telefono ||
+    !nacionalidad ||
+    !cargo ||
+    !fecha ||
+    !turno
+  ) {
+    return res.status(400).json({ error: "Completa todos los campos" });
+  }
+
+  // ✅ VALIDAR DNI DUPLICADO
+  db.query("SELECT id FROM empleados WHERE dni=?", [dni], (err, rows) => {
+    if (rows.length > 0) {
+      return res.status(400).json({ error: "DNI ya existe" });
+    }
+
+    // ✅ VALIDAR TURNO OCUPADO
+    db.query(
+      "SELECT * FROM turnos WHERE fecha=? AND turno=?",
+      [fecha, turno],
+      (err2, ocupado) => {
+        if (ocupado.length > 0) {
+          return res.status(400).json({ error: "Turno ocupado" });
+        }
+
+        let hora_inicio, hora_fin;
+
+        if (turno === "mañana") {
+          hora_inicio = "07:00:00";
+          hora_fin = "15:00:00";
+        }
+        if (turno === "tarde") {
+          hora_inicio = "15:00:00";
+          hora_fin = "23:00:00";
+        }
+        if (turno === "noche") {
+          hora_inicio = "23:00:00";
+          hora_fin = "07:00:00";
+        }
+
+        // ✅ INSERT EMPLEADO
+        db.query(
+          `INSERT INTO empleados 
+          (dni, nombres, apellido, telefono, nacionalidad, cargo, foto) 
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [dni, nombre, apellido, telefono, nacionalidad, cargo, foto],
+          () => {
+            // ✅ INSERT TURNO
+            db.query(
+              `INSERT INTO turnos 
+              (fecha, turno, hora_inicio, hora_fin, empleado_dni) 
+              VALUES (?, ?, ?, ?, ?)`,
+              [fecha, turno, hora_inicio, hora_fin, dni],
+              () => {
+                registrarLog(
+                  req.session.user.id,
+                  "CREAR_EMPLEADO",
+                  "Nuevo empleado registrado",
+                  req.ip,
+                );
+
+                res.json({ success: true });
+              },
+            );
+          },
+        );
+      },
+    );
+  });
+});
+
+app.get("/empleados", (req, res) => {
+  db.query("SELECT * FROM empleados", (err, result) => {
     if (err) return res.status(500).json([]);
     res.json(result);
   });
 });
 
-app.get("/empleados", auth, (req, res) => {
-  db.query("SELECT * FROM empleados", (err, result) => {
-    res.json(result);
+app.put("/empleados/:id", auth, (req, res) => {
+  const { id } = req.params;
+  const { dni, nombre, apellido, telefono, nacionalidad, cargo } = req.body;
+  const nombres = nombre;
+
+  db.query(
+    `UPDATE empleados SET 
+      dni=?, nombres=?, apellido=?, telefono=?, nacionalidad=?, cargo=? 
+     WHERE id=?`,
+    [dni, nombre, apellido, telefono, nacionalidad, cargo, id],
+    (err) => {
+      if (err) return res.status(500).json({ error: true });
+      res.json({ success: true });
+    },
+  );
+});
+
+app.delete("/empleados/:id", auth, (req, res) => {
+  const { id } = req.params;
+
+  db.query("DELETE FROM empleados WHERE id=?", [id], (err) => {
+    if (err) return res.status(500).json({ error: true });
+    res.json({ success: true });
   });
 });
 
-app.get("/empleado-detalle", auth, (req, res) => {
-  let { buscar } = req.query;
-  if (!buscar) return res.json(null);
+app.get("/verificar-turno", (req, res) => {
+  const { fecha, turno } = req.query;
 
-  buscar = buscar.trim();
+  db.query(
+    "SELECT * FROM turnos WHERE fecha=? AND turno=?",
+    [fecha, turno],
+    (err, result) => {
+      if (result.length > 0) {
+        return res.json({ ocupado: true });
+      }
 
-  db.query(`
-    SELECT e.*, 
-    SUM(a.estado='Puntual') puntual,
-    SUM(a.estado='Tardanza') tardanza
-    FROM empleados e
-    LEFT JOIN asistencia a ON e.dni = a.id_empleado
-    WHERE e.dni=? OR e.nombres LIKE ?
-    GROUP BY e.id
-    LIMIT 1
-  `, [buscar, "%" + buscar + "%"], (err, result) => {
-    if (result.length === 0) return res.json(null);
-    res.json(result[0]);
-  });
+      res.json({ ocupado: false });
+    },
+  );
 });
 
 app.use(express.static(__dirname));

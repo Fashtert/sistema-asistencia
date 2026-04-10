@@ -1,492 +1,608 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Panel Admin</title>
 
-<head>
-  <meta charset="UTF-8">
-  <title>Panel Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial;
+        display: flex;
+      }
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      display: flex;
-    }
+      .sidebar {
+        width: 240px;
+        background: #2c3e50;
+        color: white;
+        height: 100vh;
+        padding: 20px;
+      }
 
-    .sidebar {
-      width: 240px;
-      background: #2c3e50;
-      color: white;
-      height: 100vh;
-      padding: 20px;
-    }
+      .sidebar h2 {
+        margin-bottom: 20px;
+      }
 
-    .sidebar h2 {
-      margin-bottom: 20px;
-    }
+      .sidebar p {
+        cursor: pointer;
+        margin: 10px 0;
+      }
 
-    .sidebar p {
-      cursor: pointer;
-      margin: 10px 0;
-    }
+      .main {
+        flex: 1;
+        background: #ecf0f1;
+        padding: 20px;
+      }
 
-    .main {
-      flex: 1;
-      background: #ecf0f1;
-      padding: 20px;
-    }
+      .section {
+        display: none;
+      }
 
-    .section {
-      display: none;
-    }
+      .active {
+        display: block;
+      }
 
-    .active {
-      display: block;
-    }
+      .perfil {
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        text-align: center;
+      }
 
-    .perfil {
-      background: white;
-      padding: 30px;
-      border-radius: 10px;
-      text-align: center;
-    }
+      .perfil img {
+        width: 100px;
+        border-radius: 50%;
+      }
 
-    .perfil img {
-      width: 100px;
-      border-radius: 50%;
-    }
+      .cards {
+        display: flex;
+        gap: 10px;
+      }
 
-    .cards {
-      display: flex;
-      gap: 10px;
-    }
+      .card {
+        flex: 1;
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+      }
 
-    .card {
-      flex: 1;
-      padding: 20px;
-      border-radius: 10px;
-      color: white;
-      text-align: center;
-    }
+      .blue {
+        background: #3498db;
+      }
 
-    .blue {
-      background: #3498db;
-    }
+      .green {
+        background: #1abc9c;
+      }
 
-    .green {
-      background: #1abc9c;
-    }
+      .red {
+        background: #e74c3c;
+      }
 
-    .red {
-      background: #e74c3c;
-    }
+      .box {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-top: 20px;
+      }
 
-    .box {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+      th {
+        background: #3498db;
+        color: white;
+        padding: 10px;
+      }
 
-    th {
-      background: #3498db;
-      color: white;
-      padding: 10px;
-    }
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
 
-    td {
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
-    }
+      .icon {
+        cursor: pointer;
+        margin: 0 5px;
+      }
 
-    .icon {
-      cursor: pointer;
-      margin: 0 5px;
-    }
-  </style>
-</head>
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+      }
 
-<body>
+      .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+      }
 
-  <div class="sidebar">
-    <h2>ADMIN</h2>
-    <p onclick="mostrar('perfil')">Perfil</p>
-    <p onclick="mostrar('upload')">Subir archivo</p>
-    <p onclick="mostrar('dashboard')">Dashboard</p>
-    <p onclick="mostrar('asistencia')">Registro asistencia</p>
-    <p onclick="mostrar('logs')">Logs</p>
-    <p onclick="mostrar('empleados')">Empleados</p>
-    <p onclick="logout()">Cerrar sesión</p>
-  </div>
+      .modal input {
+        margin: 5px 0;
+        padding: 8px;
+      }
+    </style>
+  </head>
 
-  <div class="main">
-
-    <!-- PERFIL -->
-    <div id="perfil" class="section active">
-      <div class="perfil">
-
-        <div style="position:relative; display:inline-block;">
-          <img id="fotoPerfil" src="https://cdn-icons-png.flaticon.com/512/149/149071.png">
-
-          <label for="inputFoto" style="
-        position:absolute;
-        bottom:0;
-        right:0;
-        background:#3498db;
-        color:white;
-        border-radius:50%;
-        padding:8px;
-        cursor:pointer;
-      ">📷</label>
-
-          <input type="file" id="inputFoto" style="display:none">
-        </div>
-
-        <h2 id="nombreUser"></h2>
-
-        <div style="margin-top:20px;">
-          <p><strong>Nombre:</strong> <span id="nombre"></span></p>
-          <p><strong>Apellido:</strong> <span id="apellido"></span></p>
-          <p><strong>DNI:</strong> <span id="dni"></span></p>
-          <p><strong>Cargo:</strong> <span id="cargo"></span></p>
-        </div>
-
-      </div>
+  <body>
+    <div class="sidebar">
+      <h2>ADMIN</h2>
+      <p onclick="mostrar('perfil')">Perfil</p>
+      <p onclick="mostrar('upload')">Subir archivo</p>
+      <p onclick="mostrar('dashboard')">Dashboard</p>
+      <p onclick="mostrar('asistencia')">Registro asistencia</p>
+      <p onclick="mostrar('logs')">Logs</p>
+      <p onclick="mostrar('empleados')">Empleados</p>
+      <p onclick="logout()">Cerrar sesión</p>
     </div>
 
-    <!-- SUBIR ARCHIVO -->
-    <div id="upload" class="section">
-      <h2>Subir archivo biométrico</h2>
+    <div class="main">
+      <!-- PERFIL -->
+      <div id="perfil" class="section active">
+        <div class="perfil">
+          <div style="position: relative; display: inline-block">
+            <img
+              id="fotoPerfil"
+              src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+            />
 
-      <div class="box">
-        <input type="file" id="archivo">
-        <br><br>
-        <button onclick="subirArchivo()">Procesar</button>
+            <label
+              for="inputFoto"
+              style="
+                position: absolute;
+                bottom: 0;
+                right: 0;
+                background: #3498db;
+                color: white;
+                border-radius: 50%;
+                padding: 8px;
+                cursor: pointer;
+              "
+              >📷</label
+            >
 
-        <p id="estadoUpload"></p>
+            <input type="file" id="inputFoto" style="display: none" />
+          </div>
+
+          <h2 id="nombreUser"></h2>
+
+          <div style="margin-top: 20px">
+            <p><strong>Nombre:</strong> <span id="nombre"></span></p>
+            <p><strong>Apellido:</strong> <span id="apellido"></span></p>
+            <p><strong>DNI:</strong> <span id="dni"></span></p>
+            <p><strong>Cargo:</strong> <span id="cargo"></span></p>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- DASHBOARD -->
-    <div id="dashboard" class="section">
-      <h2>Dashboard</h2>
+      <!-- SUBIR ARCHIVO -->
+      <div id="upload" class="section">
+        <h2>Subir archivo biométrico</h2>
 
-      <div class="cards">
-        <div class="card blue">
-          <h3>Empleados</h3>
-          <p id="total_empleados">0</p>
+        <div class="box">
+          <input type="file" id="archivo" />
+          <br /><br />
+          <button onclick="subirArchivo()">Procesar</button>
+
+          <p id="estadoUpload"></p>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div id="dashboard" class="section">
+        <h2>Dashboard</h2>
+
+        <div class="cards">
+          <div class="card blue">
+            <h3>Empleados</h3>
+            <p id="total_empleados">0</p>
+          </div>
+
+          <div class="card green">
+            <h3>Puntual</h3>
+            <p id="puntual">0</p>
+          </div>
+
+          <div class="card red">
+            <h3>Tardanza</h3>
+            <p id="tardanza">0</p>
+          </div>
         </div>
 
-        <div class="card green">
-          <h3>Puntual</h3>
-          <p id="puntual">0</p>
+        <div class="box">
+          <select id="tipoFiltro">
+            <option value="dia">Por día</option>
+            <option value="mes">Por mes</option>
+            <option value="anio">Por año</option>
+          </select>
+
+          <input type="date" id="fechaFiltro" />
+          <button onclick="cargarDashboard()">Filtrar</button>
         </div>
 
-        <div class="card red">
-          <h3>Tardanza</h3>
-          <p id="tardanza">0</p>
+        <div class="box">
+          <canvas id="grafico"></canvas>
         </div>
       </div>
 
-      <div class="box">
-        <select id="tipoFiltro">
-          <option value="dia">Por día</option>
-          <option value="mes">Por mes</option>
-          <option value="anio">Por año</option>
-        </select>
-
-        <input type="date" id="fechaFiltro">
-        <button onclick="cargarDashboard()">Filtrar</button>
-      </div>
-
-      <div class="box">
-        <canvas id="grafico"></canvas>
-      </div>
-    </div>
-
-    <!-- ASISTENCIA -->
-    <div id="asistencia" class="section">
-      <h2>Registro de Asistencia</h2>
-
-      <!-- FILTROS -->
-      <div class="box">
-
-        <select id="tipoFiltroAsistencia">
-          <option value="dia">Por día</option>
-          <option value="mes">Por mes</option>
-          <option value="rango">Por rango</option>
-        </select>
-
-        <input type="date" id="fecha">
-        <input type="date" id="desde" style="display:none">
-        <input type="date" id="hasta" style="display:none">
-
-        <button onclick="filtrarAsistencia()">Filtrar</button>
-        <button onclick="exportarExcel()">Exportar Excel</button>
-
-      </div>
-
-      <!-- INCOMPLETOS -->
-      <h3 style="color:red;">Usuarios incompletos</h3>
-      <div class="box">
-        <table>
-          <thead>
-            <tr>
-              <th>DNI</th>
-              <th>Nombre</th>
-              <th>Fecha</th>
-              <th>Entrada</th>
-              <th>Salida</th>
-              <th>Cargo</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tablaIncompletos"></tbody>
-        </table>
-      </div>
-
-      <!-- COMPLETOS -->
-      <h3>Usuarios completos</h3>
-      <div class="box">
-        <table>
-          <thead>
-            <tr>
-              <th>DNI</th>
-              <th>Nombre</th>
-              <th>Fecha</th>
-              <th>Entrada</th>
-              <th>Salida</th>
-              <th>Cargo</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="tablaCompletos"></tbody>
-        </table>
-      </div>
-
-    </div>
-
-    <!-- LOGS -->
-    <div id="logs" class="section">
-      <h2>Logs</h2>
-
-      <div class="box">
+      <!-- ASISTENCIA -->
+      <div id="asistencia" class="section">
+        <h2>Registro de Asistencia</h2>
 
         <!-- FILTROS -->
-        <select id="tipoFiltroLogs">
-          <option value="dia">Por día</option>
-          <option value="mes">Por mes</option>
-          <option value="anio">Por año</option>
-        </select>
+        <div class="box">
+          <select id="tipoFiltroAsistencia">
+            <option value="dia">Por día</option>
+            <option value="mes">Por mes</option>
+            <option value="rango">Por rango</option>
+          </select>
 
-        <input type="date" id="fechaFiltroLogs">
+          <input type="date" id="fecha" />
+          <input type="date" id="desde" style="display: none" />
+          <input type="date" id="hasta" style="display: none" />
 
-        <button onclick="cargarLogs()">Filtrar</button>
+          <button onclick="filtrarAsistencia()">Filtrar</button>
+          <button onclick="exportarExcel()">Exportar Excel</button>
+        </div>
 
+        <!-- INCOMPLETOS -->
+        <h3 style="color: red">Usuarios incompletos</h3>
+        <div class="box">
+          <table>
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Nombre</th>
+                <th>Fecha</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Cargo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tablaIncompletos"></tbody>
+          </table>
+        </div>
+
+        <!-- COMPLETOS -->
+        <h3>Usuarios completos</h3>
+        <div class="box">
+          <table>
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Nombre</th>
+                <th>Fecha</th>
+                <th>Entrada</th>
+                <th>Salida</th>
+                <th>Cargo</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tablaCompletos"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="box">
-        <table>
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Acción</th>
-              <th>Descripción</th>
-              <th>Fecha</th>
-            </tr>
-          </thead>
-          <tbody id="tablaLogs"></tbody>
-        </table>
+      <!-- LOGS -->
+      <div id="logs" class="section">
+        <h2>Logs</h2>
+
+        <div class="box">
+          <!-- FILTROS -->
+          <select id="tipoFiltroLogs">
+            <option value="dia">Por día</option>
+            <option value="mes">Por mes</option>
+            <option value="anio">Por año</option>
+          </select>
+
+          <input type="date" id="fechaFiltroLogs" />
+
+          <button onclick="cargarLogs()">Filtrar</button>
+        </div>
+
+        <div class="box">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Acción</th>
+                <th>Descripción</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="tablaLogs"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- EMPLEADOS -->
+      <div id="empleados" class="section">
+        <h2>Gestión de Empleados</h2>
+
+        <!-- BOTÓN -->
+        <div class="box" style="text-align: right">
+          <button onclick="abrirModal()">+ Nuevo Empleado</button>
+        </div>
+
+        <div id="modalEmpleado" class="modal">
+          <div class="modal-content">
+            <h3>Nuevo Empleado</h3>
+
+            <div style="text-align: center">
+              <img
+                id="previewFoto"
+                src="https://via.placeholder.com/120"
+                style="
+                  width: 120px;
+                  height: 120px;
+                  object-fit: cover;
+                  border-radius: 10px;
+                "
+              />
+              <br /><br />
+              <input type="file" id="fotoEmpleado" required />
+            </div>
+
+            <input
+              type="text"
+              id="dniEmp"
+              placeholder="DNI (8 dígitos)"
+              required
+            />
+            <input
+              type="text"
+              id="nombreEmp"
+              placeholder="Nombres completos"
+              required
+            />
+            <input
+              type="text"
+              id="apellidoEmp"
+              placeholder="Apellidos completos"
+              required
+            />
+            <input
+              type="text"
+              id="telefonoEmp"
+              placeholder="Teléfono (9 dígitos)"
+              required
+            />
+
+            <select id="nacionalidadEmp">
+              <option value="">Seleccionar nacionalidad</option>
+              <option>Peruana</option>
+              <option>Colombiana</option>
+              <option>Chilena</option>
+            </select>
+
+            <select id="cargoEmp">
+              <option value="">Seleccionar cargo</option>
+              <option>Administrador</option>
+              <option>Cajero</option>
+              <option>Supervisor</option>
+            </select>
+
+            <!-- CALENDARIO -->
+            <input type="date" id="fechaTurno" />
+
+            <select id="turnoEmp">
+              <option value="">Seleccionar turno</option>
+              <option value="mañana">Mañana (7am - 3pm)</option>
+              <option value="tarde">Tarde (3pm - 11pm)</option>
+              <option value="noche">Noche (11pm - 7am)</option>
+            </select>
+
+            <br />
+
+            <button onclick="guardarEmpleado()">Guardar</button>
+            <button onclick="cerrarModal()">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- TABLA -->
+        <div class="box">
+          <table>
+            <thead>
+              <tr>
+                <th>DNI</th>
+                <th>Nombre Completo</th>
+                <th>Teléfono</th>
+                <th>Nacionalidad</th>
+                <th>Cargo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tablaEmpleados"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- EMPLEADOS -->
-    <div id="empleados" class="section">
-      <h2>Gestión de Empleados</h2>
+    <script>
+      // NAV
+      function mostrar(sec) {
+        document
+          .querySelectorAll(".section")
+          .forEach((s) => s.classList.remove("active"));
+        document.getElementById(sec).classList.add("active");
 
-      <div class="box">
-        <input type="text" id="dniEmp" placeholder="DNI">
-        <input type="text" id="nombreEmp" placeholder="Nombre">
-        <input type="text" id="cargoEmp" placeholder="Cargo">
-        <button onclick="guardarEmpleado()">Guardar</button>
-      </div>
-
-      <div class="box">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>DNI</th>
-              <th>Nombre</th>
-              <th>Cargo</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tablaEmpleados"></tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
-
-  <script>
-
-    // NAV
-    function mostrar(sec) {
-      document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-      document.getElementById(sec).classList.add("active");
-
-      if (sec === "dashboard") cargarDashboard();
-      if (sec === "logs") cargarLogs();
-      if (sec === "empleados") cargarEmpleados();
-    }
-
-    // PERFIL
-    async function cargarPerfilCompleto() {
-      const res = await fetch("/perfil");
-      const data = await res.json();
-
-      document.getElementById("nombreUser").innerText = data.nombres;
-      document.getElementById("nombre").innerText = data.nombres;
-      document.getElementById("apellido").innerText = data.apellido;
-      document.getElementById("dni").innerText = data.dni;
-      document.getElementById("cargo").innerText = data.cargo;
-
-      if (data.foto) document.getElementById("fotoPerfil").src = data.foto;
-    }
-
-    document.getElementById("inputFoto").addEventListener("change", async function () {
-      const formData = new FormData();
-      formData.append("foto", this.files[0]);
-
-      const res = await fetch("/perfil/foto", { method: "POST", body: formData });
-      const data = await res.json();
-
-      if (data.success) document.getElementById("fotoPerfil").src = data.ruta;
-    });
-
-    /* UPLOAD */
-    async function subirArchivo() {
-
-      const archivo = document.getElementById("archivo").files[0];
-      const estado = document.getElementById("estadoUpload");
-
-      if (!archivo) {
-        alert("Selecciona archivo");
-        return;
+        if (sec === "dashboard") cargarDashboard();
+        if (sec === "logs") cargarLogs();
+        if (sec === "empleados") cargarEmpleados();
       }
 
-      estado.innerText = "Procesando...";
+      // PERFIL
+      async function cargarPerfilCompleto() {
+        const res = await fetch("/perfil");
+        const data = await res.json();
 
-      const formData = new FormData();
-      formData.append("archivo", archivo);
+        document.getElementById("nombreUser").innerText = data.nombres;
+        document.getElementById("nombre").innerText = data.nombres;
+        document.getElementById("apellido").innerText = data.apellido;
+        document.getElementById("dni").innerText = data.dni;
+        document.getElementById("cargo").innerText = data.cargo;
 
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData
-      });
-
-      if (res.ok) {
-        estado.innerText = "Procesado correctamente";
-
-        // 🔥 ACTIVAR VISUALIZACIÓN
-        sessionStorage.setItem("dataCargada", "true");
-
-      } else {
-        estado.innerText = "Error";
+        if (data.foto) document.getElementById("fotoPerfil").src = data.foto;
       }
-    }
 
-    // DASHBOARD
-    let chart;
-    async function cargarDashboard() {
+      document
+        .getElementById("inputFoto")
+        .addEventListener("change", async function () {
+          const formData = new FormData();
+          formData.append("foto", this.files[0]);
 
-      const tipo = document.getElementById("tipoFiltro").value;
-      const fechaInput = document.getElementById("fechaFiltro").value;
+          const res = await fetch("/perfil/foto", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
 
-      let fecha = "";
-      if (tipo === "dia") fecha = fechaInput;
-      if (tipo === "mes") fecha = fechaInput.substring(0, 7);
-      if (tipo === "anio") fecha = fechaInput.substring(0, 4);
+          if (data.success)
+            document.getElementById("fotoPerfil").src = data.ruta;
+        });
 
-      const res = await fetch(`/dashboard-data?tipo=${tipo}&fecha=${fecha}`);
-      const data = await res.json();
+      /* UPLOAD */
+      async function subirArchivo() {
+        const archivo = document.getElementById("archivo").files[0];
+        const estado = document.getElementById("estadoUpload");
 
-      document.getElementById("total_empleados").innerText = data.total_empleados;
-      document.getElementById("puntual").innerText = data.puntual;
-      document.getElementById("tardanza").innerText = data.tardanza;
-
-      if (chart) chart.destroy();
-
-      chart = new Chart(document.getElementById("grafico"), {
-        type: "doughnut",
-        data: {
-          labels: ["Puntual", "Tardanza"],
-          datasets: [{
-            data: [data.puntual, data.tardanza]
-          }]
+        if (!archivo) {
+          alert("Selecciona archivo");
+          return;
         }
-      });
-    }
 
-    // FILTRO ASISTENCIA
-    document.getElementById("tipoFiltroAsistencia").addEventListener("change", function () {
+        estado.innerText = "Procesando...";
 
-      const tipo = this.value;
+        const formData = new FormData();
+        formData.append("archivo", archivo);
 
-      document.getElementById("fecha").style.display = "none";
-      document.getElementById("desde").style.display = "none";
-      document.getElementById("hasta").style.display = "none";
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-      if (tipo === "dia" || tipo === "mes") {
-        document.getElementById("fecha").style.display = "inline";
+        if (res.ok) {
+          estado.innerText = "Procesado correctamente";
+
+          // 🔥 ACTIVAR VISUALIZACIÓN
+          sessionStorage.setItem("dataCargada", "true");
+        } else {
+          estado.innerText = "Error";
+        }
       }
 
-      if (tipo === "rango") {
-        document.getElementById("desde").style.display = "inline";
-        document.getElementById("hasta").style.display = "inline";
+      // DASHBOARD
+      let chart;
+      async function cargarDashboard() {
+        const tipo = document.getElementById("tipoFiltro").value;
+        const fechaInput = document.getElementById("fechaFiltro").value;
+
+        let fecha = "";
+        if (tipo === "dia") fecha = fechaInput;
+        if (tipo === "mes") fecha = fechaInput.substring(0, 7);
+        if (tipo === "anio") fecha = fechaInput.substring(0, 4);
+
+        const res = await fetch(`/dashboard-data?tipo=${tipo}&fecha=${fecha}`);
+        const data = await res.json();
+
+        document.getElementById("total_empleados").innerText =
+          data.total_empleados;
+        document.getElementById("puntual").innerText = data.puntual;
+        document.getElementById("tardanza").innerText = data.tardanza;
+
+        if (chart) chart.destroy();
+
+        chart = new Chart(document.getElementById("grafico"), {
+          type: "doughnut",
+          data: {
+            labels: ["Puntual", "Tardanza"],
+            datasets: [
+              {
+                data: [data.puntual, data.tardanza],
+              },
+            ],
+          },
+        });
       }
 
-    });
+      // FILTRO ASISTENCIA
+      document
+        .getElementById("tipoFiltroAsistencia")
+        .addEventListener("change", function () {
+          const tipo = this.value;
 
-    // FORMATO FECHA
-    function formatearFecha(fecha) {
-      const f = new Date(fecha);
-      const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-      return `${String(f.getDate()).padStart(2, "0")} de ${meses[f.getMonth()]} del ${f.getFullYear()}`;
-    }
+          document.getElementById("fecha").style.display = "none";
+          document.getElementById("desde").style.display = "none";
+          document.getElementById("hasta").style.display = "none";
 
-    // FILTRAR
-    async function filtrarAsistencia() {
+          if (tipo === "dia" || tipo === "mes") {
+            document.getElementById("fecha").style.display = "inline";
+          }
 
-      const tipo = document.getElementById("tipoFiltroAsistencia").value;
-      const fecha = document.getElementById("fecha").value;
-      const desde = document.getElementById("desde").value;
-      const hasta = document.getElementById("hasta").value;
+          if (tipo === "rango") {
+            document.getElementById("desde").style.display = "inline";
+            document.getElementById("hasta").style.display = "inline";
+          }
+        });
 
-      let url = `/asistencia-filtrada?tipo=${tipo}`;
+      // FORMATO FECHA
+      function formatearFecha(fecha) {
+        const f = new Date(fecha);
+        const meses = [
+          "enero",
+          "febrero",
+          "marzo",
+          "abril",
+          "mayo",
+          "junio",
+          "julio",
+          "agosto",
+          "septiembre",
+          "octubre",
+          "noviembre",
+          "diciembre",
+        ];
+        return `${String(f.getDate()).padStart(2, "0")} de ${meses[f.getMonth()]} del ${f.getFullYear()}`;
+      }
 
-      if (tipo === "dia") url += `&fecha=${fecha}`;
-      if (tipo === "mes") url += `&fecha=${fecha.substring(0, 7)}`;
-      if (tipo === "rango") url += `&desde=${desde}&hasta=${hasta}`;
+      // FILTRAR
+      async function filtrarAsistencia() {
+        const tipo = document.getElementById("tipoFiltroAsistencia").value;
+        const fecha = document.getElementById("fecha").value;
+        const desde = document.getElementById("desde").value;
+        const hasta = document.getElementById("hasta").value;
 
-      const res = await fetch(url);
-      const data = await res.json();
+        let url = `/asistencia-filtrada?tipo=${tipo}`;
 
-      const tablaInc = document.getElementById("tablaIncompletos");
-      const tablaCom = document.getElementById("tablaCompletos");
+        if (tipo === "dia") url += `&fecha=${fecha}`;
+        if (tipo === "mes") url += `&fecha=${fecha.substring(0, 7)}`;
+        if (tipo === "rango") url += `&desde=${desde}&hasta=${hasta}`;
 
-      tablaInc.innerHTML = "";
-      tablaCom.innerHTML = "";
+        const res = await fetch(url);
+        const data = await res.json();
 
-      data.incompletos.forEach(a => {
-        tablaInc.innerHTML += `
+        const tablaInc = document.getElementById("tablaIncompletos");
+        const tablaCom = document.getElementById("tablaCompletos");
+
+        tablaInc.innerHTML = "";
+        tablaCom.innerHTML = "";
+
+        data.incompletos.forEach((a) => {
+          tablaInc.innerHTML += `
       <tr style="background:#ffe6e6;">
         <td>${a.id_empleado}</td>
         <td>${a.nombres || "-"}</td>
@@ -499,10 +615,10 @@
         </td>
       </tr>
     `;
-      });
+        });
 
-      data.completos.forEach(a => {
-        tablaCom.innerHTML += `
+        data.completos.forEach((a) => {
+          tablaCom.innerHTML += `
       <tr>
         <td>${a.id_empleado}</td>
         <td>${a.nombres}</td>
@@ -515,80 +631,77 @@
         </td>
       </tr>
     `;
-      });
-
-    }
-
-    // EXPORTAR
-    function exportarExcel() {
-
-      const tipo = document.getElementById("tipoFiltroAsistencia").value;
-      const fecha = document.getElementById("fecha").value;
-      const desde = document.getElementById("desde").value;
-      const hasta = document.getElementById("hasta").value;
-
-      let url = `/exportar-excel?tipo=${tipo}`;
-
-      if (tipo === "dia") url += `&fecha=${fecha}`;
-      if (tipo === "mes") url += `&fecha=${fecha.substring(0, 7)}`;
-      if (tipo === "rango") url += `&desde=${desde}&hasta=${hasta}`;
-
-      window.open(url, "_blank");
-    }
-
-    function logout() {
-      window.location = "/logout";
-    }
-
-    /* LOGS */
-    async function cargarLogs() {
-
-      const tipo = document.getElementById("tipoFiltroLogs").value;
-      const fechaInput = document.getElementById("fechaFiltroLogs").value;
-
-      const res = await fetch("/logs");
-      let data = await res.json();
-
-      // 🔥 FILTRO EN FRONTEND (rápido y suficiente)
-      if (fechaInput) {
-
-        data = data.filter(l => {
-          const fecha = new Date(l.fecha);
-
-          if (tipo === "dia") {
-            return fecha.toISOString().slice(0, 10) === fechaInput;
-          }
-
-          if (tipo === "mes") {
-            return fecha.toISOString().slice(0, 7) === fechaInput.slice(0, 7);
-          }
-
-          if (tipo === "anio") {
-            return fecha.getFullYear().toString() === fechaInput.slice(0, 4);
-          }
-
-          return true;
         });
-
       }
 
-      const tabla = document.getElementById("tablaLogs");
-      tabla.innerHTML = "";
+      // EXPORTAR
+      function exportarExcel() {
+        const tipo = document.getElementById("tipoFiltroAsistencia").value;
+        const fecha = document.getElementById("fecha").value;
+        const desde = document.getElementById("desde").value;
+        const hasta = document.getElementById("hasta").value;
 
-      data.forEach(l => {
+        let url = `/exportar-excel?tipo=${tipo}`;
 
-        // 🔥 FORMATO BONITO DE FECHA
-        const fechaObj = new Date(l.fecha);
+        if (tipo === "dia") url += `&fecha=${fecha}`;
+        if (tipo === "mes") url += `&fecha=${fecha.substring(0, 7)}`;
+        if (tipo === "rango") url += `&desde=${desde}&hasta=${hasta}`;
 
-        const opciones = {
-          day: "2-digit",
-          month: "long",
-          year: "numeric"
-        };
+        window.open(url, "_blank");
+      }
 
-        const fechaFormateada = fechaObj.toLocaleDateString("es-ES", opciones);
+      function logout() {
+        window.location = "/logout";
+      }
 
-        tabla.innerHTML += `
+      /* LOGS */
+      async function cargarLogs() {
+        const tipo = document.getElementById("tipoFiltroLogs").value;
+        const fechaInput = document.getElementById("fechaFiltroLogs").value;
+
+        const res = await fetch("/logs");
+        let data = await res.json();
+
+        // 🔥 FILTRO EN FRONTEND (rápido y suficiente)
+        if (fechaInput) {
+          data = data.filter((l) => {
+            const fecha = new Date(l.fecha);
+
+            if (tipo === "dia") {
+              return fecha.toISOString().slice(0, 10) === fechaInput;
+            }
+
+            if (tipo === "mes") {
+              return fecha.toISOString().slice(0, 7) === fechaInput.slice(0, 7);
+            }
+
+            if (tipo === "anio") {
+              return fecha.getFullYear().toString() === fechaInput.slice(0, 4);
+            }
+
+            return true;
+          });
+        }
+
+        const tabla = document.getElementById("tablaLogs");
+        tabla.innerHTML = "";
+
+        data.forEach((l) => {
+          // 🔥 FORMATO BONITO DE FECHA
+          const fechaObj = new Date(l.fecha);
+
+          const opciones = {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          };
+
+          const fechaFormateada = fechaObj.toLocaleDateString(
+            "es-ES",
+            opciones,
+          );
+
+          tabla.innerHTML += `
       <tr>
         <td>${l.username || l.usuario_id}</td>
         <td>${l.accion}</td>
@@ -596,75 +709,125 @@
         <td>${fechaFormateada}</td>
       </tr>
     `;
-      });
-    }
+        });
+      }
 
-    /* EMPLEADOS */
-    async function guardarEmpleado() {
-      const dni = document.getElementById("dni").value;
-      const nombre = document.getElementById("nombre").value;
-      const cargo = document.getElementById("cargo").value;
+      /* EMPLEADOS */
+      function abrirModal() {
+        document.getElementById("modalEmpleado").style.display = "flex";
+      }
 
-      await fetch("/empleados", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dni, nombre, cargo })
-      });
+      function cerrarModal() {
+        document.getElementById("modalEmpleado").style.display = "none";
+      }
 
-      cargarEmpleados();
-    }
+      document
+        .getElementById("fotoEmpleado")
+        .addEventListener("change", function () {
+          const file = this.files[0];
+          if (file) {
+            document.getElementById("previewFoto").src =
+              URL.createObjectURL(file);
+          }
+        });
 
-    async function cargarEmpleados() {
-      const res = await fetch("/empleados");
-      const data = await res.json();
+      async function guardarEmpleado() {
+        const dni = document.getElementById("dniEmp").value.trim();
+        const nombre = document.getElementById("nombreEmp").value.trim();
+        const apellido = document.getElementById("apellidoEmp").value.trim();
+        const telefono = document.getElementById("telefonoEmp").value.trim();
+        const nacionalidad = document.getElementById("nacionalidadEmp").value;
+        const cargo = document.getElementById("cargoEmp").value;
+        const fecha = document.getElementById("fechaTurno").value;
+        const turno = document.getElementById("turnoEmp").value;
+        const foto = document.getElementById("fotoEmpleado").files[0];
 
-      const tabla = document.getElementById("tablaEmpleados");
-      tabla.innerHTML = "";
+        // 🔥 VALIDACIONES
+        if (
+          !dni ||
+          !nombre ||
+          !apellido ||
+          !telefono ||
+          !nacionalidad ||
+          !cargo ||
+          !fecha ||
+          !turno ||
+          !foto
+        ) {
+          return alert("Todos los campos son obligatorios");
+        }
 
-      data.forEach(e => {
-        tabla.innerHTML += `
-      <tr>
-        <td>${e.id}</td>
-        <td><input value="${e.dni}" id="dni${e.id}"></td>
-        <td><input value="${e.nombres}" id="nom${e.id}"></td>
-        <td><input value="${e.cargo}" id="car${e.id}"></td>
-        <td>
-          <span class="icon" onclick="actualizar(${e.id})">💾</span>
-          <span class="icon" onclick="eliminar(${e.id})">🗑️</span>
-        </td>
-      </tr>
-    `;
-      });
-    }
+        if (!/^\d{8}$/.test(dni)) {
+          return alert("DNI inválido (8 dígitos)");
+        }
 
-    async function actualizar(id) {
-      const dni = document.getElementById("dni" + id).value;
-      const nombre = document.getElementById("nom" + id).value;
-      const cargo = document.getElementById("car" + id).value;
+        if (!/^\d{9}$/.test(telefono)) {
+          return alert("Teléfono inválido (9 dígitos)");
+        }
 
-      await fetch("/empleados/" + id, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dni, nombre, cargo })
-      });
+        // 🔥 VALIDAR TURNO OCUPADO
+        const resTurno = await fetch(
+          `/verificar-turno?fecha=${fecha}&turno=${turno}`,
+        );
+        const ocupado = await resTurno.json();
 
-      alert("Actualizado");
-    }
+        if (ocupado.ocupado) {
+          return alert("Ese turno ya está ocupado en esa fecha");
+        }
 
-    async function eliminar(id) {
-      await fetch("/empleados/" + id, { method: "DELETE" });
-      cargarEmpleados();
-    }
+        const formData = new FormData();
+        formData.append("dni", dni);
+        formData.append("nombre", nombre);
+        formData.append("apellido", apellido);
+        formData.append("telefono", telefono);
+        formData.append("nacionalidad", nacionalidad);
+        formData.append("cargo", cargo);
+        formData.append("fecha", fecha);
+        formData.append("turno", turno);
+        formData.append("foto", foto);
 
-    function logout() {
-      window.location = "/logout";
-    }
+        await fetch("/empleados", {
+          method: "POST",
+          body: formData,
+        });
 
-    /* INIT */
-    cargarPerfilCompleto();
+        alert("Empleado guardado");
+        cerrarModal();
+        cargarEmpleados();
+      }
 
-  </script>
+      async function cargarEmpleados() {
+        const res = await fetch("/empleados");
+        const data = await res.json();
 
-</body>
+        const tabla = document.getElementById("tablaEmpleados");
+        tabla.innerHTML = "";
 
+        data
+          .filter((e) => e.nombres && e.apellido && e.cargo && e.telefono)
+          .forEach((e) => {
+            tabla.innerHTML += `
+        <tr>
+          <td>${e.dni}</td>
+          <td>${e.nombres} ${e.apellido}</td>
+          <td>${e.telefono}</td>
+          <td>${e.nacionalidad}</td>
+          <td>${e.cargo}</td>
+          <td>
+            <span class="icon" onclick="eliminar(${e.id})">🗑️</span>
+          </td>
+        </tr>
+      `;
+          });
+      }
+
+      function logout() {
+        window.location = "/logout";
+      }
+
+      /* INIT */
+      cargarPerfilCompleto();
+      cargarEmpleados(); // 🔥 AGREGA ESTA LÍNEA
+    </script>
+  </body>
 </html>
