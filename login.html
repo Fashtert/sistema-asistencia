@@ -38,6 +38,20 @@ input {
   border-radius: 5px;
 }
 
+/* SOLO AGREGADO (no afecta diseño) */
+.password-container {
+  position: relative;
+}
+
+.eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+/* BOTON */
 button {
   width: 100%;
   padding: 12px;
@@ -52,6 +66,14 @@ button {
 button:hover {
   background: #2980b9;
 }
+
+/* ERROR MINIMO (no rompe diseño) */
+#errorMsg {
+  color: red;
+  font-size: 13px;
+  display: none;
+  margin-top: 5px;
+}
 </style>
 </head>
 
@@ -61,20 +83,41 @@ button:hover {
   <h2>Iniciar Sesión</h2>
 
   <input type="text" id="user" placeholder="Usuario">
-  <input type="password" id="pass" placeholder="Contraseña">
+
+  <!-- SOLO ENVOLVEMOS, NO CAMBIAMOS INPUT -->
+  <div class="password-container">
+    <input type="password" id="pass" placeholder="Contraseña">
+    <span class="eye" onclick="togglePassword()">👁</span>
+  </div>
 
   <button onclick="login()">Ingresar</button>
+
+  <!-- MENSAJE DISCRETO -->
+  <div id="errorMsg">Usuario o contraseña incorrecta</div>
 </div>
 
 <script>
+// 👁 VER PASSWORD
+function togglePassword(){
+  const input = document.getElementById("pass");
+  input.type = input.type === "password" ? "text" : "password";
+}
+
+// LOGIN (MISMA LOGICA + feedback)
 async function login(){
-  const username = document.getElementById("user").value;
-  const password = document.getElementById("pass").value;
+  const username = document.getElementById("user");
+  const password = document.getElementById("pass");
+  const errorMsg = document.getElementById("errorMsg");
+
+  errorMsg.style.display = "none";
 
   const res = await fetch("/login",{
     method:"POST",
     headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ 
+      username: username.value, 
+      password: password.value 
+    })
   });
 
   const data = await res.json();
@@ -86,9 +129,16 @@ async function login(){
       window.location = "/index.html";
     }
   }else{
-    alert("Credenciales incorrectas");
+    errorMsg.style.display = "block";
   }
 }
+
+// ENTER = LOGIN
+document.addEventListener("keydown", function(e){
+  if(e.key === "Enter"){
+    login();
+  }
+});
 </script>
 
 </body>

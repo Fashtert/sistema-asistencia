@@ -8,6 +8,7 @@ const bcrypt = require("bcrypt");
 
 const app = express();
 
+
 const db = mysql.createConnection({
   host: "localhost",
   user: "root",
@@ -135,52 +136,24 @@ const uploadPerfil = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
 });
 
-// subir foto perfil (MEJORADO)
-app.post("/perfil/foto", auth, uploadPerfil.single("foto"), (req, res) => {
-  const user = req.session.user;
+app.post("/perfil/foto", uploadPerfil.single("foto"), async (req, res) => {
+  try {
+    const userId = req.session.user.id;
 
-  if (!req.file) return res.status(400).json({ error: true });
+    const ruta = "/uploads/" + req.file.filename;
 
-  const ruta = "/uploads/perfiles/" + req.file.filename;
+    // GUARDAR EN BD
+    await db.query(
+      "UPDATE usuarios SET foto = ? WHERE id = ?",
+      [ruta, userId]
+    );
 
-  // 🔥 asegurar que exista empleado
-  db.query(
-    "INSERT IGNORE INTO empleados (dni, nombres, cargo) VALUES (?, ?, ?)",
-    [user.username, user.username, "Sin cargo"],
-    () => {
-      // 🔥 obtener foto anterior
-      db.query(
-        "SELECT foto FROM empleados WHERE dni=?",
-        [user.username],
-        (err, result) => {
-          const fotoAnterior = result[0]?.foto;
+    res.json({ success: true, ruta });
 
-          // 🔥 actualizar nueva foto
-          db.query(
-            "UPDATE empleados SET foto=? WHERE dni=?",
-            [ruta, user.username],
-            (err2) => {
-              if (err2) return res.status(500).json({ error: true });
-
-              // 🔥 eliminar foto anterior (si existe)
-              if (fotoAnterior) {
-                const rutaFisica = path.join(__dirname, fotoAnterior);
-                if (fs.existsSync(rutaFisica)) {
-                  try {
-                    fs.unlinkSync(rutaFisica);
-                  } catch (e) {}
-                }
-              }
-
-              registrarLog(user.id, "FOTO_PERFIL", "Actualizó foto", req.ip);
-
-              res.json({ success: true, ruta });
-            },
-          );
-        },
-      );
-    },
-  );
+  } catch (error) {
+    console.error(error);
+    res.json({ success: false });
+  }
 });
 
 // actualizar datos perfil
@@ -206,8 +179,11 @@ app.get("/perfil", auth, (req, res) => {
   const user = req.session.user;
 
   db.query(
-    "SELECT * FROM empleados WHERE dni = ? LIMIT 1",
-    [user.username],
+    `SELECT e.*, u.username, u.rol 
+     FROM empleados e
+     LEFT JOIN usuarios u ON u.dni = e.dni
+     WHERE u.id = ? LIMIT 1`,
+    [user.id],
     (err, result) => {
       if (err) return res.status(500).json(null);
 
@@ -215,14 +191,16 @@ app.get("/perfil", auth, (req, res) => {
         return res.json({
           nombres: user.username,
           apellido: "",
-          dni: user.username,
+          dni: "",
           cargo: "",
           foto: null,
+          username: user.username,
+          rol: user.rol
         });
       }
 
       res.json(result[0]);
-    },
+    }
   );
 });
 
@@ -290,32 +268,28 @@ app.post("/upload", auth, upload.single("archivo"), (req, res) => {
       );
 
       db.query(
-        `INSERT INTO asistencia 
-        (id_empleado, fecha, entrada, salida, estado)
-        VALUES (?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-        entrada=VALUES(entrada),
-        salida=VALUES(salida),
-        estado=VALUES(estado)`,
+        `INSERT INTO asistencia (id_empleado, fecha, entrada, salida, estado)
+   VALUES (?, ?, ?, ?, ?)
+   ON DUPLICATE KEY UPDATE
+   entrada=VALUES(entrada),
+   salida=VALUES(salida),
+   estado=VALUES(estado)`,
         [item.id_empleado, item.fecha, entrada, salida, estado],
         () => {
           completados++;
-
           if (completados === keys.length) {
-            try {
-              fs.unlinkSync(req.file.path);
-            } catch (e) {}
+            try { fs.unlinkSync(req.file.path); } catch (e) { }
 
             registrarLog(
               req.session.user.id,
               "UPLOAD",
               "Subió archivo",
-              req.ip,
+              req.ip
             );
 
             return res.json(resultado);
           }
-        },
+        }
       );
     });
   } catch (error) {
@@ -384,9 +358,9 @@ app.get("/asistencia-filtrada", auth, (req, res) => {
     params.push(fecha);
   }
 
-  if (tipo === "rango" && desde && hasta) {
-    condicion = "WHERE a.fecha BETWEEN ? AND ?";
-    params.push(desde, hasta);
+  if (tipo === "anio" && fecha) {
+    condicion = "WHERE YEAR(a.fecha) = ?";
+    params.push(fecha);
   }
 
   db.query(
@@ -466,17 +440,39 @@ app.get("/exportar-excel", auth, async (req, res) => {
 });
 
 app.get("/logs", auth, (req, res) => {
+  const { tipo, fecha } = req.query;
+
+  let condicion = "";
+  let params = [];
+
+  if (tipo === "dia" && fecha) {
+    condicion = "WHERE DATE(l.fecha) = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "mes" && fecha) {
+    condicion = "WHERE DATE_FORMAT(l.fecha, '%Y-%m') = ?";
+    params.push(fecha);
+  }
+
+  if (tipo === "anio" && fecha) {
+    condicion = "WHERE YEAR(l.fecha) = ?";
+    params.push(fecha);
+  }
+
   db.query(
     `
     SELECT l.*, u.username
     FROM logs l
     LEFT JOIN usuarios u ON u.id = l.usuario_id
+    ${condicion}
     ORDER BY l.fecha DESC
   `,
+    params,
     (err, result) => {
       if (err) return res.status(500).json([]);
       res.json(result);
-    },
+    }
   );
 });
 
@@ -610,5 +606,122 @@ app.get("/verificar-turno", (req, res) => {
 });
 
 app.use(express.static(__dirname));
+
+// ================= USUARIOS =================
+
+// obtener usuarios
+app.get("/usuarios", auth, (req, res) => {
+  db.query("SELECT id, nombres, apellidos, dni, username, rol FROM usuarios", (err, result) => {
+    if (err) return res.status(500).json([]);
+    res.json(result);
+  });
+});
+
+// crear usuario
+app.post("/usuarios", auth, async (req, res) => {
+
+  if (req.session.user.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+
+  const { nombres, apellidos, dni, username, password, rol } = req.body;
+
+  if (!nombres || !apellidos || !dni || !username || !password || !rol) {
+    return res.status(400).json({ error: "Campos incompletos" });
+  }
+
+  const hash = await bcrypt.hash(password, 10);
+
+  db.query(
+    "INSERT INTO usuarios (nombres, apellidos, dni, username, password, rol) VALUES (?, ?, ?, ?, ?, ?)",
+    [nombres, apellidos, dni, username, hash, rol],
+    (err) => {
+      if (err) return res.status(500).json({ error: err });
+
+      registrarLog(
+        req.session.user.id,
+        "CREAR_USUARIO",
+        "Nuevo usuario creado",
+        req.ip
+      );
+
+      res.json({ success: true });
+    }
+  );
+});
+
+// actualizar usuario
+app.put("/usuarios/:id", auth, async (req, res) => {
+  if (req.session.user.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+
+  const { id } = req.params;
+  const { username, password, rol, adminPassword } = req.body;
+
+  // 🔐 validar contraseña admin
+  db.query(
+    "SELECT password FROM usuarios WHERE id=?",
+    [req.session.user.id],
+    async (err, result) => {
+      if (err || result.length === 0)
+        return res.status(500).json({ error: true });
+
+      const hash = result[0].password;
+      const valido = await bcrypt.compare(adminPassword, hash);
+
+      if (!valido) {
+        return res.status(401).json({ error: "Contraseña incorrecta" });
+      }
+
+      let query = "UPDATE usuarios SET username=?, rol=?";
+      let params = [username, rol];
+
+      if (password) {
+        const newHash = await bcrypt.hash(password, 10);
+        query = "UPDATE usuarios SET username=?, password=?, rol=?";
+        params = [username, newHash, rol];
+      }
+
+      params.push(id);
+
+      db.query(query + " WHERE id=?", params, (err2) => {
+        if (err2) return res.status(500).json({ error: true });
+
+        registrarLog(
+          req.session.user.id,
+          "EDITAR_USUARIO",
+          "Usuario actualizado",
+          req.ip
+        );
+
+        res.json({ success: true });
+      });
+    }
+  );
+});
+
+// eliminar usuario
+app.delete("/usuarios/:id", auth, (req, res) => {
+
+  if (req.session.user.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+
+  const { id } = req.params;
+
+  db.query("DELETE FROM usuarios WHERE id=?", [id], (err) => {
+    if (err) return res.status(500).json({ error: true });
+
+    registrarLog(
+      req.session.user.id,
+      "ELIMINAR_USUARIO",
+      "Usuario eliminado",
+      req.ip
+    );
+
+    res.json({ success: true });
+  });
+});
 
 app.listen(3000, () => console.log("Servidor activo"));
